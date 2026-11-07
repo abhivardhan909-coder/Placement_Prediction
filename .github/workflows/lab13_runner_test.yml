@@ -9,6 +9,8 @@ on:
 jobs:
   test-runner:
     runs-on: [self-hosted, Windows, X64]
+    env:
+      PYTHON_EXE: C:\Users\abhiv\AppData\Local\Programs\Python\Python311\python.exe
 
     steps:
       - name: Checkout repository
@@ -16,7 +18,7 @@ jobs:
 
       - name: Check Python
         shell: powershell
-        run: python --version
+        run: '& $env:PYTHON_EXE --version'
 
       - name: Check Git
         shell: powershell

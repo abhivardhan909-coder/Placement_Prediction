@@ -10,6 +10,8 @@ on:
 jobs:
   mlops-monitoring:
     runs-on: [self-hosted, Windows, X64]
+    env:
+      PYTHON_EXE: C:\Users\abhiv\AppData\Local\Programs\Python\Python311\python.exe
 
     steps:
       - name: Checkout repository
@@ -18,14 +20,14 @@ jobs:
       - name: Install dependencies
         shell: powershell
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt
+          & $env:PYTHON_EXE -m pip install --upgrade pip
+          & $env:PYTHON_EXE -m pip install -r requirements.txt
 
       - name: Run MLOps monitoring trigger
         shell: powershell
         run: |
           Set-Location "$env:GITHUB_WORKSPACE"
-          python ".\src\mlops_pipeline\12_monitor_trigger.py"
+          & $env:PYTHON_EXE ".\src\mlops_pipeline\12_monitor_trigger.py"
 
       - name: Show monitoring result
         shell: powershell
