@@ -87,6 +87,36 @@ def validate_new_batch_identity(new_df, current_df):
     print("[SUCCESS] New batch identity validation passed.")
 
 
+def batch_is_already_present(new_df, current_df):
+    """Return True only when every incoming row already matches current data."""
+
+    if "customerID" not in new_df or "customerID" not in current_df:
+        return False
+
+    new_ids = set(new_df["customerID"].astype(str))
+    current_ids = set(current_df["customerID"].astype(str))
+    if not new_ids or not new_ids.issubset(current_ids):
+        return False
+
+    comparison_columns = list(new_df.columns)
+    if any(column not in current_df.columns for column in comparison_columns):
+        return False
+
+    current_rows = (
+        current_df[current_df["customerID"].astype(str).isin(new_ids)]
+        .loc[:, comparison_columns]
+        .sort_values("customerID")
+        .reset_index(drop=True)
+    )
+    new_rows = new_df.loc[:, comparison_columns].sort_values("customerID").reset_index(drop=True)
+
+    # CSV parsing can infer different dtypes on separate runs, so compare a
+    # normalized textual representation rather than pandas dtypes.
+    return current_rows.fillna("").astype(str).equals(
+        new_rows.fillna("").astype(str)
+    )
+
+
 def create_data_load_report(report_path, report):
     report_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -112,14 +142,16 @@ def ingest_new_data(raw_path, new_data_path, archive_dir, lineage_path, report_p
 
     lineage = load_lineage(lineage_path)
     already_ingested = any(record.get("new_data_hash") == new_data_hash for record in lineage)
+    already_present = batch_is_already_present(new_df, current_df)
 
-    if already_ingested:
+    if already_ingested or already_present:
         print("[INFO] This new dataset batch has already been ingested.")
         print("[INFO] No archive or retraining action will be performed.")
 
         report = {
             "status": "already_ingested",
             "ingestion_performed": False,
+            "detection_method": "lineage_hash" if already_ingested else "matching_customer_records",
             "new_data_hash": new_data_hash,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "current_rows": len(current_df),
