@@ -11,6 +11,9 @@ jobs:
     runs-on: [self-hosted, Windows, X64]
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Check Python
         shell: powershell
         run: python --version
@@ -32,4 +35,6 @@ jobs:
         run: |
           Write-Host "Runner: $env:RUNNER_NAME"
           Write-Host "Workspace: $env:GITHUB_WORKSPACE"
-          Test-Path "C:\Users\jnane\Favorites\churn-prediction"
+          if (-not (Test-Path "$env:GITHUB_WORKSPACE\src\mlops_pipeline\churn_prediction_pipeline.py")) {
+            throw "Churn prediction project was not checked out."
+          }

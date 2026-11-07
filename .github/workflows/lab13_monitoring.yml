@@ -4,24 +4,38 @@ name: Lab 13 - End-to-End MLOps
 on:
   workflow_dispatch:
   schedule:
-    - cron: "17 * * * *"
-      timezone: "Asia/Kolkata"
+    # GitHub Actions schedules are UTC; :47 UTC is :17 in Asia/Kolkata (UTC+05:30).
+    - cron: "47 * * * *"
 
 jobs:
   mlops-monitoring:
     runs-on: [self-hosted, Windows, X64]
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        shell: powershell
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
       - name: Run MLOps monitoring trigger
         shell: powershell
         run: |
-          Set-Location "C:\Users\jnane\Favorites\churn-prediction"
-          & ".\venv\Scripts\python.exe" ".\src\mlops_pipeline\12_monitor_trigger.py"
+          Set-Location "$env:GITHUB_WORKSPACE"
+          python ".\src\mlops_pipeline\12_monitor_trigger.py"
 
       - name: Show monitoring result
         shell: powershell
         run: |
-          Set-Location "C:\Users\jnane\Favorites\churn-prediction"
+          Set-Location "$env:GITHUB_WORKSPACE"
           if (Test-Path ".\outputs\monitoring\monitor_trigger_report.json") {
               Get-Content ".\outputs\monitoring\monitor_trigger_report.json"
           } else {
