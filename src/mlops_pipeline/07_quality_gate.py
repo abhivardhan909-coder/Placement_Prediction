@@ -1,22 +1,27 @@
 import json
 import os
 import sys
+from pathlib import Path
 
 import yaml
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+CONFIG_PATH = PROJECT_ROOT / "config.yaml"
 
 
 def run_quality_gate():
     print("[INFO] Starting Model Quality Gate...")
 
-    with open("config.yaml", "r", encoding="utf-8") as f:
+    with CONFIG_PATH.open("r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
-    report_path = config["paths"]["evaluation_report"]
+    report_path = PROJECT_ROOT / config["paths"]["evaluation_report"]
     metric_name = config["quality_gate"]["metric"]
     minimum_value = float(config["quality_gate"]["minimum_value"])
 
     try:
-        with open(report_path, "r", encoding="utf-8") as f:
+        with report_path.open("r", encoding="utf-8") as f:
             report = json.load(f)
     except FileNotFoundError:
         print(f"[ERROR] Evaluation report not found: {report_path}")
@@ -30,8 +35,6 @@ def run_quality_gate():
         f"required>={minimum_value:.4f}"
     )
 
-    os.makedirs(os.path.dirname(config["paths"]["quality_gate_report"]), exist_ok=True)
-
     gate_report = {
         "stage": "Lab 8 - Model Quality Gate",
         "metric": metric_name,
@@ -40,7 +43,9 @@ def run_quality_gate():
         "status": "PASSED" if passed else "FAILED",
     }
 
-    with open(config["paths"]["quality_gate_report"], "w", encoding="utf-8") as f:
+    gate_report_path = PROJECT_ROOT / config["paths"]["quality_gate_report"]
+    gate_report_path.parent.mkdir(parents=True, exist_ok=True)
+    with gate_report_path.open("w", encoding="utf-8") as f:
         json.dump(gate_report, f, indent=4)
 
     if passed:

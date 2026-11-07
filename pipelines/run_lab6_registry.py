@@ -1,5 +1,9 @@
 import subprocess
 import sys
+from pathlib import Path
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 def execute_pipeline():
     print("[INFO] =========================================")
@@ -7,17 +11,21 @@ def execute_pipeline():
     print("[INFO] =========================================")
     
     scripts = [
-        "src/train_registry.py",          # Trains and registers a new model version
-        "src/automate_lifecycle.py",      # Compares versions and promotes the Champion
-        "src/generate_registry_report.py" # Generates the JSON deployment artifact
+        PROJECT_ROOT / "src" / "train_registry.py",
+        PROJECT_ROOT / "src" / "automate_lifecycle.py",
+        PROJECT_ROOT / "src" / "generate_registry_report.py",
     ]
     
     for script in scripts:
-        print(f"\n[INFO] ---> Executing {script}...")
-        result = subprocess.run([sys.executable, script])
+        relative_script = script.relative_to(PROJECT_ROOT)
+        print(f"\n[INFO] ---> Executing {relative_script}...")
+        result = subprocess.run(
+            [sys.executable, str(script)],
+            cwd=PROJECT_ROOT,
+        )
         
         if result.returncode != 0:
-            print(f"[ERROR] Pipeline halted. {script} caught an error.")
+            print(f"[ERROR] Pipeline halted. {relative_script} caught an error.")
             sys.exit(1)
             
     print("\n[SUCCESS] Lab 6 Model Registry Pipeline fully executed!")

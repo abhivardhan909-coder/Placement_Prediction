@@ -1,5 +1,9 @@
 import subprocess
 import sys
+from pathlib import Path
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 def execute_pipeline():
     print("[INFO] =========================================")
@@ -7,17 +11,21 @@ def execute_pipeline():
     print("[INFO] =========================================")
     
     scripts = [
-        "src/preprocess.py",
-        "src/train.py",
-        "src/evaluate.py"
+        PROJECT_ROOT / "src" / "preprocess.py",
+        PROJECT_ROOT / "src" / "train.py",
+        PROJECT_ROOT / "src" / "evaluate.py",
     ]
     
     for script in scripts:
-        print(f"\n[INFO] ---> Executing {script}...")
-        result = subprocess.run([sys.executable, script])
+        relative_script = script.relative_to(PROJECT_ROOT)
+        print(f"\n[INFO] ---> Executing {relative_script}...")
+        result = subprocess.run(
+            [sys.executable, str(script)],
+            cwd=PROJECT_ROOT,
+        )
         
         if result.returncode != 0:
-            print(f"[ERROR] Pipeline halted. {script} failed with exit code {result.returncode}.")
+            print(f"[ERROR] Pipeline halted. {relative_script} failed with exit code {result.returncode}.")
             sys.exit(1)
             
     print("\n[SUCCESS] Lab 3 Pipeline fully executed!")

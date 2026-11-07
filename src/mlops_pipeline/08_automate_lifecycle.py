@@ -1,10 +1,15 @@
 import json
 import os
 import sys
+from pathlib import Path
 
 import mlflow
 import yaml
 from mlflow.tracking import MlflowClient
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+CONFIG_PATH = PROJECT_ROOT / "config.yaml"
 
 
 def configure_mlflow(config):
@@ -14,15 +19,16 @@ def configure_mlflow(config):
 
 
 def save_lifecycle_report(report):
-    os.makedirs("reports", exist_ok=True)
-    with open("reports/lifecycle_report.json", "w", encoding="utf-8") as f:
+    report_path = PROJECT_ROOT / "reports" / "lifecycle_report.json"
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    with report_path.open("w", encoding="utf-8") as f:
         json.dump(report, f, indent=4)
 
 
 def automate_model_lifecycle():
     print("[INFO] Starting Automated Model Lifecycle Manager...")
 
-    with open("config.yaml", "r", encoding="utf-8") as f:
+    with CONFIG_PATH.open("r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
     configure_mlflow(config)

@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+from pathlib import Path
 
 import joblib
 import numpy as np
@@ -15,22 +16,26 @@ from sklearn.metrics import (
 )
 
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+CONFIG_PATH = PROJECT_ROOT / "config.yaml"
+
+
 def run_evaluation():
     print("[INFO] Starting ML Pipeline Model Evaluation...")
 
-    with open("config.yaml", "r", encoding="utf-8") as f:
+    with CONFIG_PATH.open("r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
-    model_path = config["paths"]["model"]
-    processed_dir = config["data"]["processed_dir"]
+    model_path = PROJECT_ROOT / config["paths"]["model"]
+    processed_dir = PROJECT_ROOT / config["data"]["processed_dir"]
 
-    if not os.path.exists(model_path):
+    if not model_path.exists():
         print(f"[ERROR] Model not found at {model_path}. Run 05_train_registry_mlops.py first.")
         return False
 
     try:
-        X_test = np.load(os.path.join(processed_dir, "X_test_final.npy"))
-        y_test = np.load(os.path.join(processed_dir, "y_test.npy"))
+        X_test = np.load(processed_dir / "X_test_final.npy")
+        y_test = np.load(processed_dir / "y_test.npy")
     except FileNotFoundError:
         print("[ERROR] Test data not found. Run 03_preprocessing_mlops.py first.")
         return False
@@ -62,9 +67,9 @@ def run_evaluation():
         "confusion_matrix": cm.tolist(),
     }
 
-    os.makedirs("reports", exist_ok=True)
-    report_path = config["paths"]["evaluation_report"]
-    with open(report_path, "w", encoding="utf-8") as f:
+    report_path = PROJECT_ROOT / config["paths"]["evaluation_report"]
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    with report_path.open("w", encoding="utf-8") as f:
         json.dump(report, f, indent=4)
 
     print(f"[SUCCESS] Evaluation report saved to {report_path}")

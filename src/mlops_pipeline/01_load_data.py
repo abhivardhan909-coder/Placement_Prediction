@@ -10,7 +10,10 @@ import yaml
 
 from validation import validate_schema
 
-CONFIG_PATH = Path("config.yaml")
+# Resolve from this file so the stage works when launched from the IDE,
+# the repository root, or any other current working directory.
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+CONFIG_PATH = PROJECT_ROOT / "config.yaml"
 
 
 def load_config():
@@ -199,11 +202,11 @@ def load_current_data(raw_path):
 def main():
     config = load_config()
 
-    raw_path = Path(config["data"]["raw_path"])
+    raw_path = PROJECT_ROOT / config["data"]["raw_path"]
     new_data_path = raw_path.parent / "new_churn.csv"
     archive_dir = raw_path.parent / "archive"
     lineage_path = archive_dir / "dataset_lineage.json"
-    report_path = Path("artifacts/data_load_report.json")
+    report_path = PROJECT_ROOT / "artifacts" / "data_load_report.json"
 
     print("=" * 70)
     print("DATA LOADING")

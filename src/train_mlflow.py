@@ -2,6 +2,11 @@ import os
 import json
 import joblib
 import numpy as np
+import matplotlib
+
+# Pipeline runs only save plots; they do not need a Tk desktop backend.
+matplotlib.use("Agg")
+
 import matplotlib.pyplot as plt
 import mlflow
 import mlflow.sklearn

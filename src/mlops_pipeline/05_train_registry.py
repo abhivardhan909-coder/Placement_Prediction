@@ -1,5 +1,6 @@
 import os
 import sys
+from pathlib import Path
 
 import joblib
 import mlflow
@@ -8,6 +9,10 @@ import numpy as np
 import yaml
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+CONFIG_PATH = PROJECT_ROOT / "config.yaml"
 
 
 def configure_mlflow(config):
@@ -19,19 +24,19 @@ def configure_mlflow(config):
 def train_and_register_model():
     print("[INFO] --- Starting MLflow Run with Model Registry ---")
 
-    with open("config.yaml", "r", encoding="utf-8") as f:
+    with CONFIG_PATH.open("r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
     configure_mlflow(config)
     mlflow.set_experiment(config["mlflow"]["experiment_name"])
 
-    processed_dir = config["data"]["processed_dir"]
+    processed_dir = PROJECT_ROOT / config["data"]["processed_dir"]
 
     try:
-        X_train = np.load(os.path.join(processed_dir, "X_train_final.npy"))
-        X_test = np.load(os.path.join(processed_dir, "X_test_final.npy"))
-        y_train = np.load(os.path.join(processed_dir, "y_train.npy"))
-        y_test = np.load(os.path.join(processed_dir, "y_test.npy"))
+        X_train = np.load(processed_dir / "X_train_final.npy")
+        X_test = np.load(processed_dir / "X_test_final.npy")
+        y_train = np.load(processed_dir / "y_train.npy")
+        y_test = np.load(processed_dir / "y_test.npy")
     except FileNotFoundError:
         print("[ERROR] Processed data not found. Please run 03_preprocessing_mlops.py first.")
         return False
@@ -73,18 +78,22 @@ def train_and_register_model():
 
         mlflow.log_metrics(metrics)
 
-        os.makedirs("models", exist_ok=True)
-        joblib.dump(model, config["paths"]["model"])
+        model_path = PROJECT_ROOT / config["paths"]["model"]
+        model_path.parent.mkdir(parents=True, exist_ok=True)
+        joblib.dump(model, model_path)
 
-        preprocessor_path = config["paths"]["preprocessor"]
-        if os.path.exists(preprocessor_path):
-            mlflow.log_artifact(preprocessor_path, artifact_path="preprocessing_pipeline")
+        preprocessor_path = PROJECT_ROOT / config["paths"]["preprocessor"]
+        if preprocessor_path.exists():
+            mlflow.log_artifact(str(preprocessor_path), artifact_path="preprocessing_pipeline")
 
         print("[INFO] Pushing model to MLflow Registry...")
         mlflow.sklearn.log_model(
             sk_model=model,
             name="random_forest_model",
             registered_model_name=config["registry"]["model_name"],
+            # This stage creates the RandomForest itself, so its internal
+            # scikit-learn tree storage is a reviewed, trusted type.
+            skops_trusted_types=["sklearn.tree._tree.Tree"],
         )
 
         print(
@@ -93,7 +102,7 @@ def train_and_register_model():
             f"F1={metrics['f1_score']:.4f} | "
             f"ROC-AUC={metrics['roc_auc']:.4f}"
         )
-        print(f"[SUCCESS] Model saved to {config['paths']['model']}")
+        print(f"[SUCCESS] Model saved to {model_path}")
         print(f"[SUCCESS] Model registered as '{config['registry']['model_name']}'")
         print(f"[INFO] MLflow Run ID: {run.info.run_id}")
 

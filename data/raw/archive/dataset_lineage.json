@@ -28,5 +28,15 @@
     "new_rows": 100,
     "current_rows": 7344,
     "timestamp": "2026-09-29T13:02:13.573913+00:00"
+  },
+  {
+    "dataset_version": "v05",
+    "archive_file": "C:/Users/abhiv/OneDrive/Desktop/MlopsChurnProject/churn-prediction-full-project-files/data/raw/archive/churn_v04.csv",
+    "source_file": "C:/Users/abhiv/OneDrive/Desktop/MlopsChurnProject/churn-prediction-full-project-files/data/raw/new_churn.csv",
+    "new_data_hash": "52c8343f0af4f169b9d82e72c156821f05ae754718dfabdae29169e6d7b1da21",
+    "previous_rows": 7344,
+    "new_rows": 100,
+    "current_rows": 7444,
+    "timestamp": "2026-11-07T07:05:03.765895+00:00"
   }
 ]

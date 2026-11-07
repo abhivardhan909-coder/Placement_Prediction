@@ -8,10 +8,28 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from api.model_loader import ModelLoader
-from api.preprocessing import clean_prediction_data
-from api.schemas import CustomerInput, PredictionResponse, BatchPredictionRequest, BatchPredictionResponse
-from api.monitoring_logger import log_inference
+try:
+    # Package imports: used by `uvicorn api.main:app` from the project root.
+    from .model_loader import ModelLoader
+    from .preprocessing import clean_prediction_data
+    from .schemas import (
+        BatchPredictionRequest,
+        BatchPredictionResponse,
+        CustomerInput,
+        PredictionResponse,
+    )
+    from .monitoring_logger import log_inference
+except ImportError:
+    # Direct-script imports: used by `python api/main.py`.
+    from model_loader import ModelLoader
+    from preprocessing import clean_prediction_data
+    from schemas import (
+        BatchPredictionRequest,
+        BatchPredictionResponse,
+        CustomerInput,
+        PredictionResponse,
+    )
+    from monitoring_logger import log_inference
 
 model_loader = ModelLoader()
 

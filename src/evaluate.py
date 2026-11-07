@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import joblib
+from pathlib import Path
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
@@ -40,8 +41,10 @@ def run_evaluation():
     false_negatives = errors_df[(errors_df['Actual_Churn'] == 1) & (errors_df['Predicted_Churn'] == 0)]
     false_positives = errors_df[(errors_df['Actual_Churn'] == 0) & (errors_df['Predicted_Churn'] == 1)]
     
-    false_negatives.to_csv('outputs/false_negatives.csv', index=False)
-    false_positives.to_csv('outputs/false_positives.csv', index=False)
+    output_dir = Path('outputs')
+    output_dir.mkdir(parents=True, exist_ok=True)
+    false_negatives.to_csv(output_dir / 'false_negatives.csv', index=False)
+    false_positives.to_csv(output_dir / 'false_positives.csv', index=False)
     
     print("Evaluation complete and error analysis files saved!")
 

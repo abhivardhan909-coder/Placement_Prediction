@@ -1,5 +1,6 @@
 import os
 import sys
+from pathlib import Path
 
 import joblib
 import mlflow
@@ -7,6 +8,10 @@ import mlflow.sklearn
 import numpy as np
 import pandas as pd
 import yaml
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+CONFIG_PATH = PROJECT_ROOT / "config.yaml"
 
 
 def configure_mlflow(config):
@@ -35,7 +40,7 @@ def clean_dataframe(df, config):
 def run_inference_demo():
     print("[INFO] Starting ML Pipeline Production Inference...")
 
-    with open("config.yaml", "r", encoding="utf-8") as f:
+    with CONFIG_PATH.open("r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
     configure_mlflow(config)
@@ -50,14 +55,14 @@ def run_inference_demo():
         print("[ERROR] Run 07_automate_lifecycle_mlops.py first.")
         return False
 
-    preprocessor_path = config["paths"]["preprocessor"]
-    raw_data_path = config["data"]["raw_path"]
+    preprocessor_path = PROJECT_ROOT / config["paths"]["preprocessor"]
+    raw_data_path = PROJECT_ROOT / config["data"]["raw_path"]
 
-    if not os.path.exists(preprocessor_path):
+    if not preprocessor_path.exists():
         print(f"[ERROR] Preprocessor not found at {preprocessor_path}")
         return False
 
-    if not os.path.exists(raw_data_path):
+    if not raw_data_path.exists():
         print(f"[ERROR] Raw dataset not found at {raw_data_path}")
         return False
 
@@ -79,8 +84,8 @@ def run_inference_demo():
     print(result[["Predicted_Churn", "Churn_Probability"]].to_string(index=False))
     print("-----------------------------------------\n")
 
-    os.makedirs("outputs", exist_ok=True)
-    output_path = config["paths"]["inference_output"]
+    output_path = PROJECT_ROOT / config["paths"]["inference_output"]
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     result.to_csv(output_path, index=False)
 
     print(f"[SUCCESS] Predictions saved to {output_path}")
