@@ -22,7 +22,7 @@ jobs:
   mlops-ci:
     runs-on: ubuntu-latest
     env:
-  MLFLOW_TRACKING_URI: sqlite:///mlflow.db
+     MLFLOW_TRACKING_URI: sqlite:///mlflow.db
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -50,4 +50,5 @@ jobs:
             outputs/**
             models/**
             mlruns/**
+            deployment/**
           if-no-files-found: ignore
