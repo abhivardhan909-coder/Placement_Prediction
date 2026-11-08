@@ -26,7 +26,7 @@ def analyze_predictions(df):
     prediction_counts = df["prediction"].value_counts().sort_index()
     prediction_percentages = (prediction_counts / total * 100).round(2)
 
-    probability_stats = df["churn_probability"].describe()
+    probability_stats = df["placement_probability"].describe()
 
     print("\n" + "=" * 60)
     print("PREDICTION DISTRIBUTION MONITORING")
@@ -40,7 +40,7 @@ def analyze_predictions(df):
     print("\nPrediction percentages:")
     print(prediction_percentages)
 
-    print("\nChurn probability statistics:")
+    print("\nPlacement probability statistics:")
     print(probability_stats)
 
     print("\nModel information:")

@@ -8,14 +8,13 @@ import yaml
 from mlflow.tracking import MlflowClient
 
 
-V2_MODEL_PATH = Path("models/retrained_model_v2.pkl")
-V2_PREPROCESSOR_PATH = Path("models/retrained_preprocessor_v2.pkl")
-RETRAINING_REPORT_PATH = Path("outputs/retraining/retraining_report.json")
-COMPARISON_REPORT_PATH = Path("outputs/retraining/model_comparison_report.json")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+V2_MODEL_PATH = PROJECT_ROOT / "models" / "retrained_placement_model.pkl"
+V2_PREPROCESSOR_PATH = PROJECT_ROOT / "models" / "retrained_placement_preprocessor.pkl"
+RETRAINING_REPORT_PATH = PROJECT_ROOT / "outputs" / "retraining" / "retraining_report.json"
+COMPARISON_REPORT_PATH = PROJECT_ROOT / "outputs" / "retraining" / "model_comparison_report.json"
 
-REGISTRY_REPORT_PATH = Path(
-    "outputs/retraining/mlflow_registry_update_report.json"
-)
+REGISTRY_REPORT_PATH = PROJECT_ROOT / "outputs" / "retraining" / "mlflow_registry_update_report.json"
 
 
 def configure_mlflow(config):
@@ -117,18 +116,13 @@ def register_v2(config, retraining_report, comparison_report):
             f"{production_metric:.4f}"
         )
 
-    minimum_recall = float(
-        config["quality_gate"]["minimum_value"]
-    )
-
-    recall_value = float(
-        v2_metrics["recall"]
-    )
-
-    quality_gate_passed = recall_value >= minimum_recall
+    quality_gate_metric = config["quality_gate"]["metric"]
+    quality_gate_threshold = float(config["quality_gate"]["minimum_value"])
+    quality_gate_value = float(v2_metrics[quality_gate_metric])
+    quality_gate_passed = quality_gate_value >= quality_gate_threshold
 
     print(
-        f"Recall quality gate : "
+        f"{quality_gate_metric} quality gate : "
         f"{'PASS' if quality_gate_passed else 'FAIL'}"
     )
 
@@ -185,12 +179,12 @@ def register_v2(config, retraining_report, comparison_report):
 
         mlflow.log_param(
             "quality_gate_metric",
-            "recall",
+            quality_gate_metric,
         )
 
         mlflow.log_param(
             "quality_gate_minimum",
-            minimum_recall,
+            quality_gate_threshold,
         )
 
         mlflow.log_param(
@@ -229,8 +223,11 @@ def register_v2(config, retraining_report, comparison_report):
         # Register the actual sklearn model.
         model_info = mlflow.sklearn.log_model(
             sk_model=__import__("joblib").load(V2_MODEL_PATH),
-            name="retrained_random_forest_v2",
+            name="retrained_placement_model_v2",
             registered_model_name=model_name,
+            # The V2 RandomForest artifact is produced by this project;
+            # trust only its reviewed internal tree-storage type.
+            skops_trusted_types=["sklearn.tree._tree.Tree"],
         )
 
         # Keep the V2 preprocessor paired with the same MLflow run.
@@ -332,12 +329,12 @@ def register_v2(config, retraining_report, comparison_report):
     )
 
     report = {
-        "stage": "Lab 12.15 - MLflow Registry Update",
+        "stage": "Placement MLflow Registry Update",
         "model_name": model_name,
         "registered_version": int(v2_version.version),
         "registered_run_id": registry_run_id,
         "source_retraining_run_id": source_retraining_run_id,
-        "stage": "Staging",
+        "registered_stage": "Staging",
         "production_version_before": (
             int(production_version.version)
             if production_version
@@ -350,8 +347,10 @@ def register_v2(config, retraining_report, comparison_report):
         ),
         "decision_metric": decision_metric,
         "v2_decision_metric": v2_metric,
-        "v2_recall": recall_value,
-        "recall_quality_gate": (
+        "quality_gate_metric": quality_gate_metric,
+        "quality_gate_value": quality_gate_value,
+        "quality_gate_threshold": quality_gate_threshold,
+        "quality_gate": (
             "PASSED"
             if quality_gate_passed
             else "FAILED"
@@ -381,7 +380,7 @@ def register_v2(config, retraining_report, comparison_report):
 
 def main():
     print("=" * 70)
-    print("LAB 12.15 - MLFLOW REGISTRY UPDATE")
+    print("PLACEMENT MLFLOW REGISTRY UPDATE")
     print("=" * 70)
 
     if not V2_MODEL_PATH.exists():
@@ -404,7 +403,7 @@ def main():
             f"Comparison report not found: {COMPARISON_REPORT_PATH}"
         )
 
-    with open("config.yaml", "r", encoding="utf-8") as f:
+    with open(PROJECT_ROOT / "config.yaml", "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
     configure_mlflow(config)

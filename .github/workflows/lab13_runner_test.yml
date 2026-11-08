@@ -37,6 +37,6 @@ jobs:
         run: |
           Write-Host "Runner: $env:RUNNER_NAME"
           Write-Host "Workspace: $env:GITHUB_WORKSPACE"
-          if (-not (Test-Path "$env:GITHUB_WORKSPACE\src\mlops_pipeline\churn_prediction_pipeline.py")) {
-            throw "Churn prediction project was not checked out."
+          if (-not (Test-Path "$env:GITHUB_WORKSPACE\src\mlops_pipeline\placement_prediction_pipeline.py")) {
+            throw "Placement prediction project was not checked out."
           }

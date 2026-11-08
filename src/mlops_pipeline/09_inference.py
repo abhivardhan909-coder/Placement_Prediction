@@ -28,9 +28,6 @@ def clean_dataframe(df, config):
     if id_column in df.columns:
         df = df.drop(columns=[id_column])
 
-    if "TotalCharges" in df.columns:
-        df["TotalCharges"] = pd.to_numeric(df["TotalCharges"], errors="coerce")
-
     if target_column in df.columns:
         df = df.drop(columns=[target_column])
 
@@ -52,7 +49,7 @@ def run_inference_demo():
         model = mlflow.sklearn.load_model(model_uri)
     except Exception as exc:
         print(f"[ERROR] Could not load Production model from MLflow: {exc}")
-        print("[ERROR] Run 07_automate_lifecycle_mlops.py first.")
+        print("[ERROR] Run 08_automate_lifecycle.py first.")
         return False
 
     preprocessor_path = PROJECT_ROOT / config["paths"]["preprocessor"]
@@ -77,11 +74,13 @@ def run_inference_demo():
     probabilities = model.predict_proba(X_sample)[:, 1]
 
     result = sample.copy()
-    result["Predicted_Churn"] = predictions
-    result["Churn_Probability"] = np.round(probabilities, 4)
+    target_mapping = config["data"]["target_mapping"]
+    label_mapping = {value: label for label, value in target_mapping.items()}
+    result["predicted_status"] = [label_mapping[int(value)] for value in predictions]
+    result["placement_probability"] = np.round(probabilities, 4)
 
     print("\n--- ML Pipeline Production Inference Results ---")
-    print(result[["Predicted_Churn", "Churn_Probability"]].to_string(index=False))
+    print(result[["predicted_status", "placement_probability"]].to_string(index=False))
     print("-----------------------------------------\n")
 
     output_path = PROJECT_ROOT / config["paths"]["inference_output"]

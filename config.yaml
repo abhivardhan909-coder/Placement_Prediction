@@ -1,44 +1,38 @@
-# Labs 7-9: Simple end-to-end MLOps pipeline
-
 data:
-  raw_path: data/raw/churn.csv
+  raw_path: data/raw/Placement_Data_Full_Class.csv
   processed_dir: data/processed
-  target_column: Churn
-  id_column: customerID
+  target_column: status
+  id_column: sl_no
+  target_mapping:
+    Not Placed: 0
+    Placed: 1
 
 split:
   test_size: 0.2
   random_state: 42
 
 model:
-  n_estimators: 150
+  n_estimators: 200
   max_depth: 12
   random_state: 42
   class_weight: balanced
 
 mlflow:
-  # Leave empty for local MLflow. For GitHub Actions, set the
-  # MLFLOW_TRACKING_URI environment variable or put a server URI here.
-  tracking_uri: ""
-  experiment_name: churn_prediction_model_training_lab7
+  tracking_uri: sqlite:///mlflow.db
+  experiment_name: placement_prediction
 
 registry:
-  model_name: Telco_Churn_Production_Model
-  decision_metric: recall
-
-
+  model_name: Placement_Prediction_Model
+  decision_metric: f1_score
 
 quality_gate:
-  metric: recall
-  minimum_value: 0.70
-
-lab9:
-  repetitions: 3
+  metric: f1_score
+  minimum_value: 0.60
 
 paths:
   preprocessor: models/preprocessor.pkl
-  model: models/churn_model.pkl
+  model: models/placement_model.pkl
   evaluation_report: reports/evaluation_report.json
   quality_gate_report: reports/quality_gate_report.json
   failure_report: reports/failure_report.json
-  inference_output: outputs/inference_predictions.csv
+  inference_output: outputs/placement_predictions.csv

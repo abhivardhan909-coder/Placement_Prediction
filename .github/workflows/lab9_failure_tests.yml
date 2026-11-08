@@ -23,7 +23,7 @@ jobs:
           python -m pip install -r requirements.txt
 
       - name: Build the normal MLOps pipeline
-        run: python src/mlops_pipeline/churn_prediction_pipeline.py --force
+        run: python src/mlops_pipeline/placement_prediction_pipeline.py --force
 
       - name: Run Lab 9 failure and recovery tests
         run: python src/mlops_pipeline/10_failure_injection.py

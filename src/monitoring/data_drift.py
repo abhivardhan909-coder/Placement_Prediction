@@ -8,9 +8,9 @@ from evidently.presets import DataDriftPreset
 # Project root directory
 ROOT = Path(__file__).resolve().parents[2]
 
-# Dataset paths
-REFERENCE_FILE = ROOT / "data/raw/archive/churn_v01.csv"
-CURRENT_FILE = ROOT / "data/raw/archive/churn_v03.csv"
+# Compare the training features with the generated evolved placement features.
+REFERENCE_FILE = ROOT / "data" / "processed" / "X_train_raw.csv"
+CURRENT_FILE = ROOT / "data" / "monitoring" / "drift" / "evolved_data.csv"
 
 # Report output directory
 OUTPUT_DIR = ROOT / "reports/data_drift"
@@ -26,19 +26,6 @@ if not CURRENT_FILE.exists():
 # Load datasets
 reference = pd.read_csv(REFERENCE_FILE)
 current = pd.read_csv(CURRENT_FILE)
-
-# Remove customer identifier and target
-exclude_columns = ["customerID", "Churn"]
-
-reference = reference.drop(columns=exclude_columns, errors="ignore")
-current = current.drop(columns=exclude_columns, errors="ignore")
-
-# Convert TotalCharges to numeric
-for dataset in [reference, current]:
-    if "TotalCharges" in dataset.columns:
-        dataset["TotalCharges"] = pd.to_numeric(
-            dataset["TotalCharges"], errors="coerce"
-        )
 
 # Keep matching columns in the same order
 common_columns = [
@@ -65,8 +52,8 @@ result.save_html(str(report_path))
 
 print("\nDATA DRIFT ANALYSIS COMPLETED")
 print("--------------------------------")
-print("Reference dataset: churn_v01.csv")
-print("Current dataset: churn_v03.csv")
+print("Reference dataset: X_train_raw.csv")
+print("Current dataset: evolved_data.csv")
 print("Reference rows:", len(reference))
 print("Current rows:", len(current))
 print("Features compared:", len(common_columns))

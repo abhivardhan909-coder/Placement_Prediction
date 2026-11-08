@@ -1,10 +1,12 @@
 {
-    "model_name": "Telco_Churn_Production_Model",
+    "model_name": "Placement_Prediction_Model",
     "model_version": "1",
     "model_stage": "Production",
-    "run_id": "e6b24fcde8574a95a7bc1ce6da74b0dc",
-    "model_source": "models:/m-0b44c639cae04d2da060f7b7f01e34d1",
-    "model_id": "m-0b44c639cae04d2da060f7b7f01e34d1",
+    "run_id": "11d41c005e0b4a4bb9e305f669adedf4",
+    "model_source": "models:/m-82d2cd588e2f46a98fbbd726b9ee7e0c",
+    "model_id": "m-82d2cd588e2f46a98fbbd726b9ee7e0c",
     "preprocessor_artifact": "preprocessing_pipeline/preprocessor.pkl",
-    "source": "MLflow"
+    "source": "MLflow",
+    "target_column": "status",
+    "positive_class": "Placed"
 }

@@ -16,13 +16,13 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 
-UPDATED_DATASET_PATH = Path("data/processed/updated_training_data.csv")
-TEST_FEATURES_PATH = Path("data/processed/X_test_raw.csv")
-TEST_LABELS_PATH = Path("data/processed/y_test.npy")
-
-MODEL_V2_PATH = Path("models/retrained_model_v2.pkl")
-PREPROCESSOR_V2_PATH = Path("models/retrained_preprocessor_v2.pkl")
-REPORT_PATH = Path("outputs/retraining/retraining_report.json")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+UPDATED_DATASET_PATH = PROJECT_ROOT / "data" / "processed" / "updated_training_data.csv"
+TEST_FEATURES_PATH = PROJECT_ROOT / "data" / "processed" / "X_test_raw.csv"
+TEST_LABELS_PATH = PROJECT_ROOT / "data" / "processed" / "y_test.npy"
+MODEL_V2_PATH = PROJECT_ROOT / "models" / "retrained_placement_model.pkl"
+PREPROCESSOR_V2_PATH = PROJECT_ROOT / "models" / "retrained_placement_preprocessor.pkl"
+REPORT_PATH = PROJECT_ROOT / "outputs" / "retraining" / "retraining_report.json"
 
 
 def configure_mlflow(config):
@@ -32,37 +32,32 @@ def configure_mlflow(config):
         mlflow.set_tracking_uri(tracking_uri)
 
 
-def clean_dataframe(df, target_column="Churn"):
+def clean_dataframe(df, target_column="status"):
     df = df.copy()
 
     if target_column in df.columns:
-        df[target_column] = (
-            df[target_column]
-            .apply(lambda x: 1 if str(x).strip().lower() in {"1", "yes"} else 0)
-            .astype(int)
-        )
-
-    if "TotalCharges" in df.columns:
-        df["TotalCharges"] = pd.to_numeric(
-            df["TotalCharges"],
-            errors="coerce",
-        )
+        values = df[target_column]
+        if not pd.api.types.is_numeric_dtype(values):
+            df[target_column] = values.map({"Not Placed": 0, "Placed": 1})
+            if df[target_column].isna().any():
+                raise ValueError("Updated dataset contains an unknown placement target label.")
+        df[target_column] = df[target_column].astype(int)
 
     return df
 
 
 def build_preprocessor(X_train):
     categorical_columns = X_train.select_dtypes(
-        include=["object", "category"]
+        include=["object", "category", "string"]
     ).columns.tolist()
 
     numerical_columns = X_train.select_dtypes(
-        include=["int64", "float64"]
+        include=["number"]
     ).columns.tolist()
 
     numerical_pipeline = Pipeline(
         steps=[
-            ("imputer", SimpleImputer(strategy="constant", fill_value=0)),
+            ("imputer", SimpleImputer(strategy="median")),
             ("scaler", StandardScaler()),
         ]
     )
@@ -70,13 +65,10 @@ def build_preprocessor(X_train):
     categorical_pipeline = Pipeline(
         steps=[
             (
-                "ohe",
-                OneHotEncoder(
-                    drop="first",
-                    sparse_output=False,
-                    handle_unknown="ignore",
-                ),
+                "imputer",
+                SimpleImputer(strategy="most_frequent"),
             ),
+            ("ohe", OneHotEncoder(sparse_output=False, handle_unknown="ignore")),
         ]
     )
 
@@ -127,7 +119,7 @@ def main():
     print("LAB 12.13 - MODEL RETRAINING")
     print("=" * 70)
 
-    with open("config.yaml", "r", encoding="utf-8") as f:
+    with (PROJECT_ROOT / "config.yaml").open("r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
     configure_mlflow(config)
@@ -158,14 +150,15 @@ def main():
     print(f"Held-out test data    : {X_test.shape}")
     print(f"Test labels           : {y_test.shape}")
 
-    if "Churn" not in updated.columns:
-        raise ValueError("Updated training dataset must contain Churn column.")
+    target_column = config["data"]["target_column"]
+    if target_column not in updated.columns:
+        raise ValueError(f"Updated training dataset must contain {target_column}.")
 
-    X_train = updated.drop(columns=["Churn"])
+    X_train = updated.drop(columns=[target_column])
     y_train = clean_dataframe(
-        updated[["Churn"]],
-        target_column="Churn",
-    )["Churn"].to_numpy()
+        updated[[target_column]],
+        target_column=target_column,
+    )[target_column].to_numpy()
 
     if len(X_train) != len(y_train):
         raise ValueError("Training feature/label count mismatch.")
@@ -267,7 +260,7 @@ def main():
         )
 
         mlflow.log_param(
-            "training_churn_rate",
+            "training_placement_rate",
             float(y_train.mean()),
         )
 
@@ -306,7 +299,7 @@ def main():
         "training_dataset": str(UPDATED_DATASET_PATH),
         "training_rows": int(len(X_train)),
         "test_rows": int(len(X_test)),
-        "training_churn_rate": round(float(y_train.mean()), 6),
+        "training_placement_rate": round(float(y_train.mean()), 6),
         "model_parameters": params,
         "metrics": {
             key: round(float(value), 6)

@@ -11,9 +11,10 @@ from api.model_loader import ModelLoader
 from api.preprocessing import clean_prediction_data
 
 
-BASELINE_PATH = Path("data/processed/X_test_raw.csv")
-EVOLVED_PATH = Path("data/monitoring/drift/evolved_data.csv")
-REPORT_PATH = Path("outputs/drift/prediction_drift_report.csv")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+BASELINE_PATH = PROJECT_ROOT / "data" / "processed" / "X_test_raw.csv"
+EVOLVED_PATH = PROJECT_ROOT / "data" / "monitoring" / "drift" / "evolved_data.csv"
+REPORT_PATH = PROJECT_ROOT / "outputs" / "drift" / "prediction_drift_report.csv"
 
 KS_THRESHOLD = 0.10
 
@@ -46,12 +47,12 @@ def summarize_predictions(name, predictions, probabilities):
     print("-" * 60)
 
     total = len(predictions)
-    churn_count = int((predictions == 1).sum())
-    non_churn_count = int((predictions == 0).sum())
+    placed_count = int((predictions == 1).sum())
+    not_placed_count = int((predictions == 0).sum())
 
     print(f"Total predictions : {total}")
-    print(f"Churn (1)         : {churn_count} ({churn_count / total * 100:.2f}%)")
-    print(f"Non-churn (0)     : {non_churn_count} ({non_churn_count / total * 100:.2f}%)")
+    print(f"Placed (1)        : {placed_count} ({placed_count / total * 100:.2f}%)")
+    print(f"Not placed (0)    : {not_placed_count} ({not_placed_count / total * 100:.2f}%)")
     print(f"Mean probability  : {probabilities.mean():.6f}")
     print(f"Median probability: {np.median(probabilities):.6f}")
     print(f"Std probability   : {probabilities.std():.6f}")

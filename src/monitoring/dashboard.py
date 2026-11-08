@@ -5,15 +5,16 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-LOG_FILE = Path("/app/logs/inference/inference_log.jsonl")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+LOG_FILE = PROJECT_ROOT / "logs" / "inference" / "inference_log.jsonl"
 
 st.set_page_config(
-    page_title="Churn Model Monitoring",
+    page_title="Placement Model Monitoring",
     page_icon="📊",
     layout="wide"
 )
 
-st.title("Telco Customer Churn - Model Monitoring")
+st.title("Placement Prediction - Model Monitoring")
 
 
 @st.cache_data
@@ -41,7 +42,7 @@ if df.empty:
     st.warning("No inference logs found.")
     st.stop()
 
-for col in ["prediction", "churn_probability", "latency_ms"]:
+for col in ["prediction", "placement_probability", "latency_ms"]:
     if col in df.columns:
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
@@ -69,10 +70,10 @@ with left:
 
 
 with right:
-    st.subheader("Churn Probability")
+    st.subheader("Placement Probability")
 
-    if "churn_probability" in df.columns:
-        probabilities = df["churn_probability"].dropna()
+    if "placement_probability" in df.columns:
+        probabilities = df["placement_probability"].dropna()
 
         if not probabilities.empty:
             histogram = pd.cut(
@@ -92,9 +93,7 @@ with right:
 st.divider()
 st.header("Data Drift Monitoring")
 
-drift_report = Path(
-    "/app/reports/data_drift/drift_report.html"
-)
+drift_report = PROJECT_ROOT / "reports" / "data_drift" / "drift_report.html"
 
 if drift_report.exists():
     st.success("Data drift report is available.")

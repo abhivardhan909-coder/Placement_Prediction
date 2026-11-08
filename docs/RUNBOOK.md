@@ -1,89 +1,57 @@
-# Runbook — Churn Prediction MLOps
+# Placement Prediction Runbook
 
-## Before running
+Run commands from the repository root in PowerShell.
 
-1. Start Docker Desktop and wait until the Docker engine and Kubernetes cluster are ready if the run needs Docker/Kubernetes operations.
-2. Ensure the local project checkout is on `main` and up to date.
-3. Confirm the project virtual environment exists at `C:\Users\jnane\Favorites\churn-prediction\venv`.
-4. Start the interactive GitHub Actions runner in a separate PowerShell window:
+## Initial setup
 
-   ```powershell
-   cd C:\actions-runner
-   .\run.cmd
-   ```
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
 
-   Keep this window open. GitHub should show `jnaneswar-mlops-runner` as `Idle` when no job is running.
+Keep the raw source at `data/raw/Placement_Data_Full_Class.csv`. The expected target is `status`, with values `Placed` and `Not Placed`. `config.yaml` is the authoritative source for data paths and target encoding.
 
-5. For Docker/Kubernetes operations, verify:
+## Train, evaluate, and deploy
 
-   ```powershell
-   docker info
-   kubectl get nodes
-   kubectl get deployment churn-api
-   ```
+```powershell
+python .\src\mlops_pipeline\placement_prediction_pipeline.py
+```
 
-## Start monitoring manually
+The script validates and preprocesses the dataset, trains and registers a model in the local MLflow store, evaluates the candidate, applies the quality gate, and promotes/deploys only when the lifecycle stage approves the candidate. A current dataset is sufficient; ingestion of an additional batch is optional.
 
-1. Open the repository on GitHub.
-2. Select **Actions → Lab 13 - End-to-End MLOps**.
-3. Choose **Run workflow** and branch `main`.
-4. Open the run and inspect each step and log.
+For optional batch ingestion, place a schema-compatible CSV at `data/raw/new_placement_data.csv`, with unique `sl_no` values that are not already in the current dataset, then rerun the pipeline.
 
-The workflow is also configured to run at minute 17 of every hour in `Asia/Kolkata`. Because the runner is interactive, scheduled jobs can run only while the runner process is online and Windows is available.
+## API checks
 
-## Interpret the monitoring report
+The deployment bundle must exist under `deployment/`. Run the app:
 
-Inspect `outputs/monitoring/monitor_trigger_report.json` from the project root.
+```powershell
+python -m uvicorn api.main:app --host 127.0.0.1 --port 8000
+```
 
-| Status | Meaning |
-|---|---|
-| `no_drift` | The combined drift report did not identify drift; the pipeline is not called. |
-| `drift_waiting_for_data` | Drift was detected, but the incoming batch file is missing. |
-| `no_new_data_retraining_skipped` | The file exists, but its hash was already recorded as ingested. |
-| `retraining_completed` | New data was ingested and the main pipeline returned success. Check the lifecycle report for the promotion decision. |
-| `drift_analysis_failed` | Drift analysis failed; inspect the workflow log and the required source reports. |
+Use `/health`, `/metadata`, `/predict`, or `/predict/batch`. Run local tests with `python -m pytest .\tests\test_api.py .\tests\test_performance.py`. The container comparison test requires the container to be serving on `localhost:8000`.
 
-A file named `new_churn.csv` is not automatically new data. The loader compares the file's SHA-256 hash with `data/raw/archive/dataset_lineage.json`. A new batch must pass schema validation and use customer IDs that do not overlap with the current dataset.
+## Docker and Kubernetes
 
-## Important reports
+```powershell
+docker build -t placement-prediction-api:latest .
+kubectl get nodes
+python .\deployment\deploy_production.py
+kubectl rollout status deployment/placement-api
+kubectl get pods -l app=placement-api
+kubectl get service placement-api-service
+```
 
-- `artifacts/data_load_report.json` — ingestion status and batch hash.
-- `data/raw/archive/dataset_lineage.json` — ingested batches and dataset versions.
-- `outputs/drift/drift_analysis_report.csv` — combined drift categories.
-- `outputs/monitoring/monitor_trigger_report.json` — trigger decision.
-- `reports/evaluation_report.json` — model evaluation metrics.
-- `reports/lifecycle_report.json` — promotion decision.
-- `reports/deployment_automation_report.json` — deployment outcome.
-- `logs/churn_prediction_pipeline_run_log.json` — stage-by-stage status.
+Docker Desktop Kubernetes shares its local image cache. For a remote cluster, push the image to a registry and update `k8s/deployment.yaml`.
 
-## Lifecycle behavior
+## Common failures
 
-The recall quality gate is configured at 0.70. A candidate passing the minimum is not necessarily promoted: the lifecycle manager compares it with Production. `deploy_if_promoted.py` skips deployment when `reports/lifecycle_report.json` says `promoted: false`.
+- **Dataset missing or invalid:** confirm the filename and exact columns in `data/raw/Placement_Data_Full_Class.csv`; inspect `artifacts/baseline_validation.csv`. Successful validation rewrites this report with the current placement schema.
+- **Missing model files:** rerun the MLOps pipeline to prepare `deployment/model.pkl`, `deployment/preprocessor.pkl`, and `deployment/model_metadata.json`.
+- **Registry unavailable:** keep the configured local `sqlite:///mlflow.db` tracking URI consistent between the training and deployment stages.
+- **Kubernetes image pull failure:** verify Docker Desktop Kubernetes is the active context and that `placement-prediction-api:latest` is locally available.
+- **API returns 503 at startup:** verify the deployment bundle is complete and rebuild the image after regenerating it.
 
-## Troubleshooting
-
-### Workflow stays queued
-
-- In **Settings → Actions → Runners**, confirm the runner is online.
-- Confirm the PowerShell window running `C:\actions-runner\run.cmd` remains open.
-- Confirm the workflow requests labels `self-hosted`, `Windows`, and `X64`.
-
-### Kubernetes commands fail
-
-Start Docker Desktop, wait for Kubernetes to become ready, then run `kubectl get nodes`. Retry after the cluster is available. A Kubernetes check failure can be caused by the cluster being unavailable rather than by the monitoring code.
-
-### Retraining is skipped
-
-Check `artifacts/data_load_report.json` and `data/raw/archive/dataset_lineage.json`. `already_ingested` means the same file hash was consumed earlier. Do not delete or rewrite lineage just to force retraining. Obtain or generate a genuinely new, schema-valid batch with unique customer IDs.
-
-### Model was not deployed
-
-Inspect `reports/lifecycle_report.json`. If `promoted` is false, deployment was correctly skipped. Passing the quality gate alone does not mean the candidate should replace Production.
-
-### Docker access denied from Python
-
-Docker access has previously depended on the Windows integrity level of the virtual-environment Python executable. If direct Docker commands work but Python-launched Docker commands fail with a named-pipe access error, compare the integrity levels of the shell and `venv\Scripts\python.exe` before changing Docker permissions.
-
-## Operational security
-
-This runner executes workflow code on a personal Windows machine and can access local project resources. Avoid running untrusted pull-request code on it. Restrict repository permissions and workflow triggers to trusted contributors.
+Generated MLflow state, logs, processed arrays, and prediction outputs are local runtime data and should not be committed.

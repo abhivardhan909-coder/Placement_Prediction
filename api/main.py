@@ -15,7 +15,7 @@ try:
     from .schemas import (
         BatchPredictionRequest,
         BatchPredictionResponse,
-        CustomerInput,
+        PlacementInput,
         PredictionResponse,
     )
     from .monitoring_logger import log_inference
@@ -26,7 +26,7 @@ except ImportError:
     from schemas import (
         BatchPredictionRequest,
         BatchPredictionResponse,
-        CustomerInput,
+        PlacementInput,
         PredictionResponse,
     )
     from monitoring_logger import log_inference
@@ -46,12 +46,12 @@ async def lifespan(app: FastAPI):
     yield
 
     #shutdowon
-    print("[INFO] Churn Prediction API shutting down...")
+    print("[INFO] Placement Prediction API shutting down...")
 
 
 app = FastAPI(
-    title="Churn Prediction API",
-    description="Lab 10 - ML Model Serving and API Engineering",
+    title="Placement Prediction API",
+    description="Predicts a student's placement outcome from academic and work-experience features.",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -113,8 +113,7 @@ async def http_exception_handler(
 @app.get("/")
 def root():
     return {
-        "message": "Churn Prediction API is running",
-        "lab": "Lab 10",
+        "message": "Placement Prediction API is running",
         "status": "success",
     }
 
@@ -130,7 +129,7 @@ def health():
 def metadata():
 
     return {
-        "service": "Churn Prediction API",
+        "service": "Placement Prediction API",
         "version": "1.0.0",
         "model_name": model_loader.model_name,
         "model_uri": model_loader.model_uri,
@@ -139,7 +138,7 @@ def metadata():
     }
 
 @app.post("/predict", response_model=PredictionResponse)
-def predict(data: CustomerInput):
+def predict(data: PlacementInput):
     request_id = uuid.uuid4().hex[:12]
     start_time = time.perf_counter()
     data_dict = data.model_dump()
@@ -176,8 +175,11 @@ def predict(data: CustomerInput):
         # 4. Generate prediction
         prediction = model_loader.model.predict(X)[0]
 
-        # 5. Generate churn probability
-        probability = model_loader.model.predict_proba(X)[0][1]
+        # Class 1 is configured as "Placed".
+        positive_class_index = list(model_loader.model.classes_).index(1)
+        probability = model_loader.model.predict_proba(X)[0][positive_class_index]
+        prediction_value = int(prediction)
+        predicted_status = "Placed" if prediction_value == 1 else "Not Placed"
 
         # 6. Calculate inference latency
         latency_ms = round((time.perf_counter() - start_time) * 1000, 3)
@@ -185,8 +187,8 @@ def predict(data: CustomerInput):
         # 7. Log inference event
         log_inference(
             input_data=data_dict,
-            prediction=int(prediction),
-            churn_probability=float(probability),
+            prediction=prediction_value,
+            placement_probability=float(probability),
             latency_ms=latency_ms,
             status="success",
             model_name=model_loader.model_name,
@@ -197,8 +199,9 @@ def predict(data: CustomerInput):
 
         # 8. Return the prediction
         return {
-            "prediction": int(prediction),
-            "churn_probability": float(probability),
+            "prediction": prediction_value,
+            "predicted_status": predicted_status,
+            "placement_probability": float(probability),
         }
 
     except Exception as e:
@@ -254,7 +257,8 @@ def predict_batch(data: BatchPredictionRequest):
         X = model_loader.preprocessor.transform(df)
 
         predictions = model_loader.model.predict(X)
-        probabilities = model_loader.model.predict_proba(X)[:, 1]
+        positive_class_index = list(model_loader.model.classes_).index(1)
+        probabilities = model_loader.model.predict_proba(X)[:, positive_class_index]
 
         total_latency_ms = round(
             (time.perf_counter() - start_time) * 1000,
@@ -271,7 +275,7 @@ def predict_batch(data: BatchPredictionRequest):
             log_inference(
                 input_data=data_dict,
                 prediction=int(prediction),
-                churn_probability=float(probability),
+                placement_probability=float(probability),
                 latency_ms=total_latency_ms,
                 status="success",
                 model_name=model_loader.model_name,
@@ -283,7 +287,8 @@ def predict_batch(data: BatchPredictionRequest):
             results.append(
                 {
                     "prediction": int(prediction),
-                    "churn_probability": float(probability),
+                    "predicted_status": "Placed" if int(prediction) == 1 else "Not Placed",
+                    "placement_probability": float(probability),
                 }
             )
 

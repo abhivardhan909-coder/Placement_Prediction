@@ -1,1 +1,1 @@
-"""Churn prediction API package."""
+"""Placement prediction API package."""

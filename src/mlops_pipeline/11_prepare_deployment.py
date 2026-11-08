@@ -1,4 +1,5 @@
 import json
+import os
 import shutil
 from pathlib import Path
 
@@ -7,9 +8,10 @@ import mlflow
 import mlflow.sklearn
 import yaml
 from mlflow import MlflowClient
+from mlflow.models import Model
 
 
-MODEL_NAME = "Telco_Churn_Production_Model"
+TRUSTED_SKOPS_TYPES = ["sklearn.tree._tree.Tree"]
 
 
 def load_config():
@@ -38,19 +40,48 @@ def get_production_model(client, model_name):
     return production_versions[0]
 
 
+def load_registered_model(model_uri):
+    """Load a registered model, including legacy skops RandomForest artifacts."""
+
+    try:
+        return mlflow.sklearn.load_model(model_uri)
+    except Exception as exc:
+        if "Untrusted types found" not in str(exc):
+            raise
+
+        # Older registrations do not persist skops trusted-type metadata.
+        # This project created the model itself, so trust only the reviewed
+        # scikit-learn tree storage used by RandomForestClassifier.
+        print("[INFO] Loading legacy skops model with reviewed trusted types...")
+        local_model_dir = Path(
+            mlflow.artifacts.download_artifacts(artifact_uri=model_uri)
+        )
+        model_config = Model.load(str(local_model_dir))
+        sklearn_flavor = model_config.flavors["sklearn"]
+
+        if sklearn_flavor.get("serialization_format") != "skops":
+            raise
+
+        import skops.io
+
+        return skops.io.load(
+            local_model_dir / sklearn_flavor["pickled_model"],
+            trusted=TRUSTED_SKOPS_TYPES,
+        )
+
+
 def prepare_deployment():
     project_root, config = load_config()
 
     deployment_dir = project_root / "deployment"
 
-    if deployment_dir.exists():
-        shutil.rmtree(deployment_dir)
-
-    deployment_dir.mkdir(parents=True)
-
+    deployment_dir.mkdir(parents=True, exist_ok=True)
+    tracking_uri = os.getenv("MLFLOW_TRACKING_URI") or config["mlflow"].get("tracking_uri")
+    if tracking_uri:
+        mlflow.set_tracking_uri(tracking_uri)
     client = MlflowClient()
-
-    model_version = get_production_model(client, MODEL_NAME)
+    model_name = config["registry"]["model_name"]
+    model_version = get_production_model(client, model_name)
 
     model_name = model_version.name
     version = model_version.version
@@ -66,7 +97,7 @@ def prepare_deployment():
     print("[INFO] Downloading Production model...")
 
     model_uri = f"models:/{model_name}/{version}"
-    model = mlflow.sklearn.load_model(model_uri)
+    model = load_registered_model(model_uri)
 
     model_path = deployment_dir / "model.pkl"
     joblib.dump(model, model_path)
@@ -86,10 +117,7 @@ def prepare_deployment():
     final_preprocessor_path = deployment_dir / "preprocessor.pkl"
 
     if downloaded_preprocessor != final_preprocessor_path:
-        shutil.move(
-            downloaded_preprocessor,
-            final_preprocessor_path,
-        )
+        shutil.copy2(downloaded_preprocessor, final_preprocessor_path)
 
     print(f"[SUCCESS] Preprocessor saved to {final_preprocessor_path}")
 
@@ -113,6 +141,8 @@ def prepare_deployment():
         "model_id": model_source.split("/")[-1],
         "preprocessor_artifact": "preprocessing_pipeline/preprocessor.pkl",
         "source": "MLflow",
+        "target_column": config["data"]["target_column"],
+        "positive_class": "Placed",
     }
 
     metadata_path = deployment_dir / "model_metadata.json"
@@ -124,9 +154,9 @@ def prepare_deployment():
 
     print("\n[INFO] Deployment bundle:")
     print("deployment/")
-    print("├── model.pkl")
-    print("├── preprocessor.pkl")
-    print("└── model_metadata.json")
+    print("|- model.pkl")
+    print("|- preprocessor.pkl")
+    print("`- model_metadata.json")
 
     print("\n[SUCCESS] Deployment preparation completed.")
 

@@ -14,7 +14,7 @@ import yaml
 
 
 # Project root:
-# churn-prediction/
+# Placement Prediction/
 # ├── src/
 # │   └── mlops_pipeline/
 # │       └── 10_failure_injection.py
@@ -91,8 +91,8 @@ def test_invalid_datatype(config):
 
         # Convert column to object first so pandas can store
         # the invalid string without a dtype warning.
-        df["MonthlyCharges"] = df["MonthlyCharges"].astype(object)
-        df.loc[0, "MonthlyCharges"] = "INVALID_NUMBER"
+        df["ssc_p"] = df["ssc_p"].astype(object)
+        df.loc[0, "ssc_p"] = "INVALID_NUMBER"
 
         df.to_csv(data_path, index=False)
 
@@ -124,7 +124,7 @@ def test_schema_mismatch(config):
     try:
         df = pd.read_csv(data_path)
 
-        df = df.drop(columns=["Contract"])
+        df = df.drop(columns=["hsc_s"])
         df.to_csv(data_path, index=False)
 
         exit_code = run_script(

@@ -36,7 +36,7 @@ def show_summary(df):
         "request_id",
         "timestamp",
         "prediction",
-        "churn_probability",
+        "placement_probability",
         "latency_ms",
         "status",
         "model_version",

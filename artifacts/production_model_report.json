@@ -1,25 +1,28 @@
 {
-    "registry_status": "READY_FOR_DEPLOYMENT",
-    "model_lineage": {
-        "registered_name": "Telco_Churn_Production_Model",
-        "version": 1,
-        "current_stage": "Production",
-        "run_id": "9c6a92c9af0a4c2fbb9ca212af23ca7a",
-        "artifact_uri": "models:/m-2e678f319663459a9b47956a34e08439"
-    },
-    "performance_metrics": {
-        "recall": 0.7270408163265306,
-        "f1_score": 0.6484641638225256,
-        "roc_auc": 0.8512873700072554,
-        "accuracy": 0.7924781732706514,
-        "precision": 0.5852156057494866
-    },
-    "hyperparameters": {
-        "n_estimators": "200",
-        "max_depth": "15",
-        "random_state": "42",
-        "class_weight": "balanced",
-        "model_family": "RandomForest"
-    },
-    "preprocessing_dependency": "models/preprocessor.pkl"
+  "registry_status": "READY_FOR_DEPLOYMENT",
+  "model_lineage": {
+    "registered_name": "Placement_Prediction_Model",
+    "version": 1,
+    "current_stage": "Production",
+    "run_id": "11d41c005e0b4a4bb9e305f669adedf4",
+    "artifact_uri": "models:/m-82d2cd588e2f46a98fbbd726b9ee7e0c"
+  },
+  "performance_metrics": {
+    "accuracy": 0.8837209302325582,
+    "precision": 0.9310344827586207,
+    "recall": 0.9,
+    "f1_score": 0.9152542372881356,
+    "roc_auc": 0.9448717948717948
+  },
+  "hyperparameters": {
+    "n_estimators": "200",
+    "max_depth": "12",
+    "random_state": "42",
+    "class_weight": "balanced",
+    "model_family": "RandomForest",
+    "lab": "ML Pipeline"
+  },
+  "preprocessing_dependency": "deployment/preprocessor.pkl",
+  "target_column": "status",
+  "positive_class": "Placed"
 }

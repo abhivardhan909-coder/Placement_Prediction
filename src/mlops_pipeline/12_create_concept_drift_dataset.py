@@ -1,96 +1,37 @@
-import numpy as np
-import pandas as pd
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
 
-FEATURES_PATH = Path("data/monitoring/drift/evolved_data.csv")
-LABELS_PATH = Path("data/processed/y_test.npy")
-OUTPUT_PATH = Path("data/monitoring/drift/evolved_labeled_data.csv")
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+FEATURES_PATH = PROJECT_ROOT / "data" / "monitoring" / "drift" / "evolved_data.csv"
+LABELS_PATH = PROJECT_ROOT / "data" / "processed" / "y_test.npy"
+OUTPUT_PATH = PROJECT_ROOT / "data" / "monitoring" / "drift" / "evolved_labeled_data.csv"
 RANDOM_SEED = 42
 
 
-def create_concept_drift_dataset():
+def create_concept_drift_dataset() -> pd.DataFrame:
+    if not FEATURES_PATH.exists() or not LABELS_PATH.exists():
+        raise FileNotFoundError("Generate evolved placement features and the test split first.")
+
+    features = pd.read_csv(FEATURES_PATH)
+    labels = np.load(LABELS_PATH).astype(int)
+    if len(features) != len(labels):
+        raise ValueError(f"Feature/label mismatch: X={len(features)}, y={len(labels)}")
+
     rng = np.random.default_rng(RANDOM_SEED)
+    evolved_labels = labels.copy()
+    changed_count = max(1, int(len(labels) * 0.15))
+    changed_indices = rng.choice(len(labels), size=changed_count, replace=False)
+    evolved_labels[changed_indices] = 1 - evolved_labels[changed_indices]
 
-    X = pd.read_csv(FEATURES_PATH)
-    y = np.load(LABELS_PATH).astype(int)
-
-    if len(X) != len(y):
-        raise ValueError(
-            f"Feature/label mismatch: X={len(X)}, y={len(y)}"
-        )
-
-    y_evolved = y.copy()
-
-    # ---------------------------------------------------------
-    # Simulate a changed customer-churn relationship.
-    #
-    # Customers with month-to-month contracts become more
-    # likely to churn in the evolved environment.
-    # ---------------------------------------------------------
-    if "Contract" in X.columns:
-        month_to_month = X["Contract"].eq("Month-to-month")
-
-        affected_indices = np.where(month_to_month)[0]
-
-        flip_count = int(len(affected_indices) * 0.25)
-
-        selected_indices = rng.choice(
-            affected_indices,
-            size=flip_count,
-            replace=False,
-        )
-
-        y_evolved[selected_indices] = 1
-
-    # ---------------------------------------------------------
-    # Simulate another relationship change:
-    # high MonthlyCharges become more strongly associated
-    # with churn.
-    # ---------------------------------------------------------
-    if "MonthlyCharges" in X.columns:
-        high_charge_indices = np.where(
-            X["MonthlyCharges"] > X["MonthlyCharges"].quantile(0.75)
-        )[0]
-
-        flip_count = int(len(high_charge_indices) * 0.15)
-
-        selected_indices = rng.choice(
-            high_charge_indices,
-            size=flip_count,
-            replace=False,
-        )
-
-        y_evolved[selected_indices] = 1
-
-    result = X.copy()
-    result["Churn"] = y_evolved
-
+    result = features.copy()
+    result["status"] = np.where(evolved_labels == 1, "Placed", "Not Placed")
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     result.to_csv(OUTPUT_PATH, index=False)
-
-    print("=" * 70)
-    print("CONCEPT DRIFT DATASET CREATED")
-    print("=" * 70)
-
-    print(f"Feature source : {FEATURES_PATH}")
-    print(f"Label source   : {LABELS_PATH}")
-    print(f"Output         : {OUTPUT_PATH}")
-    print(f"Rows           : {len(result)}")
-    print(f"Columns        : {len(result.columns)}")
-
-    print()
-    print("Baseline label distribution:")
-    print(pd.Series(y).value_counts().sort_index())
-
-    print()
-    print("Evolved label distribution:")
-    print(pd.Series(y_evolved).value_counts().sort_index())
-
-    print()
-    print("Label changes:")
-    print(f"Changed labels : {(y != y_evolved).sum()}")
+    print(f"[SUCCESS] Concept-drift placement dataset saved to {OUTPUT_PATH}.")
+    return result
 
 
 if __name__ == "__main__":

@@ -1,32 +1,31 @@
 import json
+import sys
+from pathlib import Path
 from urllib.request import Request, urlopen
 
 from fastapi.testclient import TestClient
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from api.main import app
 
 
 PAYLOAD = {
-    "customerID": "SOMEONE18",
-    "gender": "Female",
-    "SeniorCitizen": 0,
-    "Partner": "Yes",
-    "Dependents": "No",
-    "tenure": 12,
-    "PhoneService": "Yes",
-    "MultipleLines": "No",
-    "InternetService": "DSL",
-    "OnlineSecurity": "No",
-    "OnlineBackup": "Yes",
-    "DeviceProtection": "No",
-    "TechSupport": "No",
-    "StreamingTV": "No",
-    "StreamingMovies": "No",
-    "Contract": "Month-to-month",
-    "PaperlessBilling": "Yes",
-    "PaymentMethod": "Electronic check",
-    "MonthlyCharges": 50.0,
-    "TotalCharges": "600.0",
+    "gender": "F",
+    "ssc_p": 67.0,
+    "ssc_b": "Others",
+    "hsc_p": 91.0,
+    "hsc_b": "Others",
+    "hsc_s": "Commerce",
+    "degree_p": 58.0,
+    "degree_t": "Sci&Tech",
+    "workex": "No",
+    "etest_p": 55.0,
+    "specialisation": "Mkt&HR",
+    "mba_p": 58.8,
 }
 
 
@@ -42,6 +41,20 @@ def call_container():
 
     with urlopen(request) as response:
         return json.loads(response.read().decode("utf-8"))
+
+
+def test_local_and_container_predictions_match():
+    with TestClient(app) as client:
+        local_response = client.post("/predict", json=PAYLOAD)
+    assert local_response.status_code == 200
+
+    container_response = call_container()
+    local_data = local_response.json()
+    assert local_data["prediction"] == container_response["prediction"]
+    assert local_data["predicted_status"] == container_response["predicted_status"]
+    assert abs(
+        local_data["placement_probability"] - container_response["placement_probability"]
+    ) < 1e-10
 
 
 def main():
@@ -65,8 +78,8 @@ def main():
     local_prediction = local_data["prediction"]
     container_prediction = container_response["prediction"]
 
-    local_probability = local_data.get("probability")
-    container_probability = container_response.get("probability")
+    local_probability = local_data["placement_probability"]
+    container_probability = container_response["placement_probability"]
 
     print("\n" + "=" * 60)
     print("COMPARISON")
@@ -75,19 +88,12 @@ def main():
     print(f"Local prediction      : {local_prediction}")
     print(f"Container prediction : {container_prediction}")
 
-    if local_probability is not None:
-        print(f"Local probability     : {local_probability}")
-
-    if container_probability is not None:
-        print(f"Container probability: {container_probability}")
+    print(f"Local probability     : {local_probability}")
+    print(f"Container probability: {container_probability}")
 
     prediction_match = local_prediction == container_prediction
 
-    probability_match = (
-        local_probability is None
-        or container_probability is None
-        or abs(local_probability - container_probability) < 1e-10
-    )
+    probability_match = abs(local_probability - container_probability) < 1e-10
 
     print(f"\nPrediction match      : {prediction_match}")
     print(f"Probability match     : {probability_match}")

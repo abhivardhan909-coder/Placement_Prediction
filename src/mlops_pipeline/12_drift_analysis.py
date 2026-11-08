@@ -2,14 +2,27 @@ import pandas as pd
 from pathlib import Path
 
 
-DATA_DRIFT_PATH = Path("outputs/drift/data_drift_report.csv")
-PREDICTION_DRIFT_PATH = Path("outputs/drift/prediction_drift_report.csv")
-CONCEPT_DRIFT_PATH = Path("outputs/drift/concept_drift_report.csv")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DATA_DRIFT_PATH = PROJECT_ROOT / "outputs" / "drift" / "data_drift_report.csv"
+PREDICTION_DRIFT_PATH = PROJECT_ROOT / "outputs" / "drift" / "prediction_drift_report.csv"
+CONCEPT_DRIFT_PATH = PROJECT_ROOT / "outputs" / "drift" / "concept_drift_report.csv"
 
-OUTPUT_PATH = Path("outputs/drift/drift_analysis_report.csv")
+OUTPUT_PATH = PROJECT_ROOT / "outputs" / "drift" / "drift_analysis_report.csv"
 
 
 def load_reports():
+    required_reports = [
+        DATA_DRIFT_PATH,
+        PREDICTION_DRIFT_PATH,
+        CONCEPT_DRIFT_PATH,
+    ]
+    missing_reports = [str(path) for path in required_reports if not path.exists()]
+    if missing_reports:
+        raise FileNotFoundError(
+            "Missing drift report(s). Run the data, prediction, and concept "
+            f"drift stages first: {', '.join(missing_reports)}"
+        )
+
     data_drift = pd.read_csv(DATA_DRIFT_PATH)
     prediction_drift = pd.read_csv(PREDICTION_DRIFT_PATH)
     concept_drift = pd.read_csv(CONCEPT_DRIFT_PATH)

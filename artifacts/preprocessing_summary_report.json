@@ -1,26 +1,24 @@
 {
-    "validation_status": "FAILED",
+    "validation_status": "PASSED",
     "matrix_dimensions": {
         "X_train_shape": [
-            6035,
-            30
+            172,
+            21
         ],
         "X_test_shape": [
-            1409,
-            30
+            43,
+            21
         ],
         "y_train_shape": [
-            6035
+            172
         ],
         "y_test_shape": [
-            1409
+            43
         ]
     },
     "data_quality": {
-        "missing_values_X_train": 1,
+        "missing_values_X_train": 0,
         "missing_values_X_test": 0
     },
-    "errors": [
-        "NaNs detected in X_train after preprocessing."
-    ]
+    "errors": []
 }

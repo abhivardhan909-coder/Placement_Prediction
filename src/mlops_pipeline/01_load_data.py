@@ -54,9 +54,9 @@ def save_lineage(lineage_path, lineage):
 def get_next_archive_version(archive_dir):
     versions = []
 
-    for file_path in archive_dir.glob("churn_v*.csv"):
+    for file_path in archive_dir.glob("placement_v*.csv"):
         try:
-            version = int(file_path.stem.replace("churn_v", ""))
+            version = int(file_path.stem.replace("placement_v", ""))
             versions.append(version)
         except ValueError:
             continue
@@ -66,23 +66,23 @@ def get_next_archive_version(archive_dir):
 
 def validate_new_batch_identity(new_df, current_df):
     if new_df.empty:
-        raise ValueError("new_churn.csv is empty.")
+        raise ValueError("new_placement_data.csv is empty.")
 
     if current_df.empty:
-        raise ValueError("Current churn.csv is empty.")
+        raise ValueError("Current placement dataset is empty.")
 
-    if not new_df["customerID"].is_unique:
-        raise ValueError("new_churn.csv contains duplicate customerID values.")
+    if not new_df["sl_no"].is_unique:
+        raise ValueError("Incoming placement data contains duplicate sl_no values.")
 
-    if current_df["customerID"].duplicated().any():
-        raise ValueError("Current churn.csv contains duplicate customerID values.")
+    if current_df["sl_no"].duplicated().any():
+        raise ValueError("Current placement dataset contains duplicate sl_no values.")
 
-    current_ids = set(current_df["customerID"].astype(str))
-    new_ids = set(new_df["customerID"].astype(str))
+    current_ids = set(current_df["sl_no"].astype(str))
+    new_ids = set(new_df["sl_no"].astype(str))
     overlapping_ids = current_ids.intersection(new_ids)
 
     if overlapping_ids:
-        raise ValueError(f"new_churn.csv contains {len(overlapping_ids)} customer IDs already present in churn.csv.")
+        raise ValueError(f"Incoming placement data overlaps {len(overlapping_ids)} existing sl_no values.")
 
     print("[SUCCESS] New batch identity validation passed.")
 
@@ -90,11 +90,11 @@ def validate_new_batch_identity(new_df, current_df):
 def batch_is_already_present(new_df, current_df):
     """Return True only when every incoming row already matches current data."""
 
-    if "customerID" not in new_df or "customerID" not in current_df:
+    if "sl_no" not in new_df or "sl_no" not in current_df:
         return False
 
-    new_ids = set(new_df["customerID"].astype(str))
-    current_ids = set(current_df["customerID"].astype(str))
+    new_ids = set(new_df["sl_no"].astype(str))
+    current_ids = set(current_df["sl_no"].astype(str))
     if not new_ids or not new_ids.issubset(current_ids):
         return False
 
@@ -103,12 +103,12 @@ def batch_is_already_present(new_df, current_df):
         return False
 
     current_rows = (
-        current_df[current_df["customerID"].astype(str).isin(new_ids)]
+        current_df[current_df["sl_no"].astype(str).isin(new_ids)]
         .loc[:, comparison_columns]
-        .sort_values("customerID")
+        .sort_values("sl_no")
         .reset_index(drop=True)
     )
-    new_rows = new_df.loc[:, comparison_columns].sort_values("customerID").reset_index(drop=True)
+    new_rows = new_df.loc[:, comparison_columns].sort_values("sl_no").reset_index(drop=True)
 
     # CSV parsing can infer different dtypes on separate runs, so compare a
     # normalized textual representation rather than pandas dtypes.
@@ -166,7 +166,7 @@ def ingest_new_data(raw_path, new_data_path, archive_dir, lineage_path, report_p
     archive_dir.mkdir(parents=True, exist_ok=True)
 
     archive_version = get_next_archive_version(archive_dir)
-    archive_filename = f"churn_v{archive_version:02d}.csv"
+    archive_filename = f"placement_v{archive_version:02d}.csv"
     archive_path = archive_dir / archive_filename
 
     shutil.copy2(raw_path, archive_path)
@@ -235,7 +235,7 @@ def main():
     config = load_config()
 
     raw_path = PROJECT_ROOT / config["data"]["raw_path"]
-    new_data_path = raw_path.parent / "new_churn.csv"
+    new_data_path = raw_path.parent / "new_placement_data.csv"
     archive_dir = raw_path.parent / "archive"
     lineage_path = archive_dir / "dataset_lineage.json"
     report_path = PROJECT_ROOT / "artifacts" / "data_load_report.json"

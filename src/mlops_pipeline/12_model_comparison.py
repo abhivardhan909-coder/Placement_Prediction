@@ -7,22 +7,20 @@ sys.path.append(str(Path(__file__).resolve().parents[2]))
 import joblib
 import numpy as np
 import pandas as pd
+import yaml
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 
 from api.model_loader import ModelLoader
 from api.preprocessing import clean_prediction_data
 
 
-TEST_FEATURES_PATH = Path("data/processed/X_test_raw.csv")
-TEST_LABELS_PATH = Path("data/processed/y_test.npy")
-
-V2_MODEL_PATH = Path("models/retrained_model_v2.pkl")
-V2_PREPROCESSOR_PATH = Path("models/retrained_preprocessor_v2.pkl")
-
-REPORT_PATH = Path("outputs/retraining/model_comparison_report.csv")
-JSON_REPORT_PATH = Path("outputs/retraining/model_comparison_report.json")
-
-RECALL_THRESHOLD = 0.70
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+TEST_FEATURES_PATH = PROJECT_ROOT / "data" / "processed" / "X_test_raw.csv"
+TEST_LABELS_PATH = PROJECT_ROOT / "data" / "processed" / "y_test.npy"
+V2_MODEL_PATH = PROJECT_ROOT / "models" / "retrained_placement_model.pkl"
+V2_PREPROCESSOR_PATH = PROJECT_ROOT / "models" / "retrained_placement_preprocessor.pkl"
+REPORT_PATH = PROJECT_ROOT / "outputs" / "retraining" / "model_comparison_report.csv"
+JSON_REPORT_PATH = PROJECT_ROOT / "outputs" / "retraining" / "model_comparison_report.json"
 
 
 def evaluate(model, preprocessor, X_test, y_test):
@@ -61,7 +59,7 @@ def evaluate(model, preprocessor, X_test, y_test):
 
 def main():
     print("=" * 70)
-    print("LAB 12.14 - MODEL V1 VS V2 COMPARISON")
+    print("PLACEMENT MODEL V1 VS V2 COMPARISON")
     print("=" * 70)
 
     X_test = pd.read_csv(TEST_FEATURES_PATH)
@@ -170,10 +168,13 @@ def main():
     # ---------------------------------------------------------
     # Quality gate
     # ---------------------------------------------------------
-    v1_recall_pass = v1_metrics["recall"] >= RECALL_THRESHOLD
-    v2_recall_pass = v2_metrics["recall"] >= RECALL_THRESHOLD
-
-    v2_recall_improved = v2_metrics["recall"] > v1_metrics["recall"]
+    with open(PROJECT_ROOT / "config.yaml", "r", encoding="utf-8") as file:
+        config = yaml.safe_load(file)
+    gate_metric = config["quality_gate"]["metric"]
+    gate_threshold = float(config["quality_gate"]["minimum_value"])
+    v1_gate_pass = v1_metrics[gate_metric] >= gate_threshold
+    v2_gate_pass = v2_metrics[gate_metric] >= gate_threshold
+    v2_improved = v2_metrics[gate_metric] > v1_metrics[gate_metric]
 
     print()
     print("=" * 70)
@@ -185,12 +186,12 @@ def main():
     print()
     print("QUALITY CHECKS")
     print("-" * 70)
-    print(f"Recall threshold       : {RECALL_THRESHOLD:.2f}")
-    print(f"V1 recall threshold    : {'PASS' if v1_recall_pass else 'FAIL'}")
-    print(f"V2 recall threshold    : {'PASS' if v2_recall_pass else 'FAIL'}")
+    print(f"{gate_metric} threshold       : {gate_threshold:.2f}")
+    print(f"V1 {gate_metric} threshold    : {'PASS' if v1_gate_pass else 'FAIL'}")
+    print(f"V2 {gate_metric} threshold    : {'PASS' if v2_gate_pass else 'FAIL'}")
     print(
-        f"V2 recall vs V1       : "
-        f"{'IMPROVED' if v2_recall_improved else 'NOT IMPROVED'}"
+        f"V2 {gate_metric} vs V1       : "
+        f"{'IMPROVED' if v2_improved else 'NOT IMPROVED'}"
     )
 
     # ---------------------------------------------------------
@@ -204,7 +205,7 @@ def main():
     )
 
     json_report = {
-        "stage": "Lab 12.14 - Model Comparison",
+        "stage": "Placement Model Comparison",
         "evaluation_dataset": str(TEST_FEATURES_PATH),
         "test_rows": int(len(X_test)),
         "model_v1": {
@@ -224,11 +225,11 @@ def main():
         },
         "comparison": comparison,
         "quality_gate": {
-            "metric": "recall",
-            "threshold": RECALL_THRESHOLD,
-            "v1_passed": v1_recall_pass,
-            "v2_passed": v2_recall_pass,
-            "v2_improved_over_v1": v2_recall_improved,
+            "metric": gate_metric,
+            "threshold": gate_threshold,
+            "v1_passed": v1_gate_pass,
+            "v2_passed": v2_gate_pass,
+            "v2_improved_over_v1": v2_improved,
         },
     }
 

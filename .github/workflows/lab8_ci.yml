@@ -7,14 +7,14 @@ on:
       - "config.yaml"
       - "src/mlops_pipeline/**"
       - "requirements.txt"
-      - "data/raw/churn.csv"
+      - "data/raw/Placement_Data_Full_Class.csv"
       - ".github/workflows/lab8_ci.yml"
   pull_request:
     paths:
       - "config.yaml"
       - "src/mlops_pipeline/**"
       - "requirements.txt"
-      - "data/raw/churn.csv"
+      - "data/raw/Placement_Data_Full_Class.csv"
       - ".github/workflows/lab8_ci.yml"
   workflow_dispatch:
 
@@ -37,11 +37,32 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt pytest
 
-      - name: Run Churn Prediction MLOps Pipeline
-        run: python src/mlops_pipeline/churn_prediction_pipeline.py
+      - name: Run Placement Prediction MLOps Pipeline
+        run: python src/mlops_pipeline/placement_prediction_pipeline.py
+
+      - name: Build placement API image
+        run: docker build -t placement-prediction-api:latest .
+
+      - name: Start placement API container for tests
+        run: docker run --detach --rm --name placement-api-test -p 8000:8000 placement-prediction-api:latest
+
+      - name: Wait for placement API readiness
+        run: |
+          for attempt in {1..30}; do
+            if curl --fail --silent http://localhost:8000/health; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Placement API did not become ready in time."
+          exit 1
 
       - name: Run test suite
         run: python -m pytest
+
+      - name: Stop placement API test container
+        if: always()
+        run: docker stop placement-api-test || true
 
       - name: Upload CI artifacts
         if: always()

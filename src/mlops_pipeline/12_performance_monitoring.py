@@ -52,8 +52,8 @@ def print_results(metrics, model_loader, X_test, y_test):
 
     print(f"\nEvaluation dataset : X_test_raw.csv")
     print(f"Test samples       : {len(X_test)}")
-    print(f"Actual churn       : {int(y_test.sum())}")
-    print(f"Actual non-churn   : {int((y_test == 0).sum())}")
+    print(f"Actually placed    : {int(y_test.sum())}")
+    print(f"Not placed         : {int((y_test == 0).sum())}")
 
     print(f"\nModel name    : {model_loader.model_name}")
     print(f"Model version : {model_loader.model_version}")
@@ -65,7 +65,7 @@ def print_results(metrics, model_loader, X_test, y_test):
         print(f"{metric.capitalize():<12}: {value:.4f}")
 
     print("\nQuality gate:")
-    print(f"Recall >= 0.70 : {metrics['recall'] >= 0.70}")
+    print(f"F1 >= 0.60     : {metrics['f1'] >= 0.60}")
 
 
 def main():

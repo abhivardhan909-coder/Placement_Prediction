@@ -1,13 +1,13 @@
 {
     "status": "success",
-    "model_name": "Telco_Churn_Production_Model",
-    "decision_metric": "recall",
-    "candidate_version": 1,
-    "candidate_run_id": "9e83759d4f50416eb70f01324d21bee8",
-    "candidate_metric": 0.7272727272727273,
-    "production_version_before": null,
-    "production_metric_before": null,
-    "promoted": true,
-    "decision": "PROMOTED",
+    "model_name": "Placement_Prediction_Model",
+    "decision_metric": "f1_score",
+    "candidate_version": 2,
+    "candidate_run_id": "1c26ee4d9c1d4478a77ce5d8ec55d4b0",
+    "candidate_metric": 0.9152542372881356,
+    "production_version_before": 1,
+    "production_metric_before": 0.9152542372881356,
+    "promoted": false,
+    "decision": "ARCHIVED",
     "production_version_after": 1
 }

@@ -12,4 +12,7 @@ logs/
 *.log
 data/processed/
 data/monitoring/
+data/raw/archive/
+data/raw/new_placement_data.csv
+outputs/
 models/

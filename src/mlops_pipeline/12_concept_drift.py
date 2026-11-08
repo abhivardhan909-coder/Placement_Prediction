@@ -11,10 +11,11 @@ from api.model_loader import ModelLoader
 from api.preprocessing import clean_prediction_data
 
 
-BASELINE_X_PATH = Path("data/processed/X_test_raw.csv")
-BASELINE_Y_PATH = Path("data/processed/y_test.npy")
-EVOLVED_PATH = Path("data/monitoring/drift/evolved_labeled_data.csv")
-REPORT_PATH = Path("outputs/drift/concept_drift_report.csv")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+BASELINE_X_PATH = PROJECT_ROOT / "data" / "processed" / "X_test_raw.csv"
+BASELINE_Y_PATH = PROJECT_ROOT / "data" / "processed" / "y_test.npy"
+EVOLVED_PATH = PROJECT_ROOT / "data" / "monitoring" / "drift" / "evolved_labeled_data.csv"
+REPORT_PATH = PROJECT_ROOT / "outputs" / "drift" / "concept_drift_report.csv"
 
 
 def evaluate(model_loader, X, y):
@@ -43,8 +44,10 @@ def main():
 
     evolved = pd.read_csv(EVOLVED_PATH)
 
-    evolved_X = evolved.drop(columns=["Churn"])
-    evolved_y = evolved["Churn"].to_numpy()
+    evolved_X = evolved.drop(columns=["status"])
+    evolved_y = evolved["status"].map({"Not Placed": 0, "Placed": 1}).to_numpy()
+    if pd.isna(evolved_y).any():
+        raise ValueError("Concept-drift dataset contains an invalid placement label.")
 
     if len(baseline_X) != len(baseline_y):
         raise ValueError("Baseline feature/label count mismatch")
