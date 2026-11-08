@@ -28,10 +28,10 @@ For optional batch ingestion, place a schema-compatible CSV at `data/raw/new_pla
 The deployment bundle must exist under `deployment/`. Run the app:
 
 ```powershell
-python -m uvicorn api.main:app --host 127.0.0.1 --port 8000
+python -m uvicorn api.main:app --host 127.0.0.1 --port 9000
 ```
 
-Use `/health`, `/metadata`, `/predict`, or `/predict/batch`. Run local tests with `python -m pytest .\tests\test_api.py .\tests\test_performance.py`. The container comparison test requires the container to be serving on `localhost:8000`.
+Use `http://127.0.0.1:9000/health`, `/metadata`, `/predict`, or `/predict/batch`. Run local tests with `python -m pytest .\tests\test_api.py .\tests\test_performance.py`. The container comparison test requires the container to be serving on `localhost:8000`.
 
 ## Docker and Kubernetes
 
@@ -42,9 +42,10 @@ python .\deployment\deploy_production.py
 kubectl rollout status deployment/placement-api
 kubectl get pods -l app=placement-api
 kubectl get service placement-api-service
+kubectl port-forward service/placement-api-service 9000:8000
 ```
 
-Docker Desktop Kubernetes shares its local image cache. For a remote cluster, push the image to a registry and update `k8s/deployment.yaml`.
+Open `http://127.0.0.1:9000/health` or `http://127.0.0.1:9000/docs`. Docker's standalone `docker run -p 9000:8000 ...` and Kubernetes port-forward both use local port 9000; stop one before starting the other. Docker Desktop Kubernetes shares its local image cache. For a remote cluster, push the image to a registry and update `k8s/deployment.yaml`.
 
 ## Common failures
 

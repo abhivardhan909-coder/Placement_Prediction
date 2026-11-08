@@ -48,7 +48,7 @@ python -m pytest .\tests\test_api.py .\tests\test_performance.py
 Start the service from the repository root after a deployment bundle exists:
 
 ```powershell
-python -m uvicorn api.main:app --host 127.0.0.1 --port 8000
+python -m uvicorn api.main:app --host 127.0.0.1 --port 9000
 ```
 
 `GET /health` checks service health; `GET /metadata` reports the loaded model. Send a placement request to `POST /predict`:
@@ -60,7 +60,7 @@ $body = @{
   degree_t = "Sci&Tech"; workex = "No"; etest_p = 55.0
   specialisation = "Mkt&HR"; mba_p = 58.8
 } | ConvertTo-Json
-Invoke-RestMethod http://127.0.0.1:8000/predict -Method Post `
+Invoke-RestMethod http://127.0.0.1:9000/predict -Method Post `
   -ContentType "application/json" -Body $body
 ```
 
@@ -72,10 +72,10 @@ Build and run the image:
 
 ```powershell
 docker build -t placement-prediction-api:latest .
-docker run --rm -p 8000:8000 placement-prediction-api:latest
+docker run --rm -p 9000:8000 placement-prediction-api:latest
 ```
 
-In another terminal, check `http://127.0.0.1:8000/health` and run the sample request above. To compare local and container predictions, keep the container running on port 8000 and run:
+Check `http://127.0.0.1:9000/health` and run the sample request above. To compare local and container predictions, keep a container running on port 8000 and run:
 
 ```powershell
 python -m pytest .\tests\test_local_vs_container.py
@@ -93,13 +93,13 @@ kubectl get pods -l app=placement-api
 kubectl get service placement-api-service
 ```
 
-The service is exposed on NodePort `30080`. You can also forward it to localhost:
+Forward the service to localhost on port `9000`:
 
 ```powershell
-kubectl port-forward service/placement-api-service 8000:8000
+kubectl port-forward service/placement-api-service 9000:8000
 ```
 
-Check `http://127.0.0.1:8000/health`, then send the sample request. To remove only this project's Kubernetes resources:
+Check `http://127.0.0.1:9000/health`, then send the sample request. Use either Docker's `9000:8000` port mapping or Kubernetes port-forward at a time; both need localhost port 9000. To remove only this project's Kubernetes resources:
 
 ```powershell
 kubectl delete -f .\k8s\service.yaml

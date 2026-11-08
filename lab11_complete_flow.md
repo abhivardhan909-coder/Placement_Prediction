@@ -14,10 +14,10 @@ python .\src\mlops_pipeline\placement_prediction_pipeline.py
 docker build -t placement-prediction-api:latest .
 python .\deployment\deploy_production.py
 kubectl rollout status deployment/placement-api
-kubectl port-forward service/placement-api-service 8000:8000
+kubectl port-forward service/placement-api-service 9000:8000
 ```
 
-In another terminal, confirm `http://127.0.0.1:8000/health` responds before
+In another terminal, confirm `http://127.0.0.1:9000/health` responds before
 sending placement records to `POST /predict`.
 
 The current Kubernetes resources use the local Docker Desktop image and
