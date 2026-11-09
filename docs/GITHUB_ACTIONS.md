@@ -8,7 +8,7 @@ The Lab 8, Lab 9, and Lab 13 workflows use a dedicated Windows self-hosted runne
 2. **Lab 9 - Failure and Recovery Tests** runs after a successful Lab 8 run or by manual dispatch. It runs the failure-injection suite, builds and deploys the API to Kubernetes, and uploads its evidence.
 3. **Lab 13 - End-to-End MLOps** runs after successful Lab 9 runs, on its schedule, or by manual dispatch. It runs the monitoring trigger, checks the deployment and in-cluster API health, and uploads monitoring evidence.
 
-The runner creates a workspace-local `.venv` for each checked-out job. Keep the runner host and its Kubernetes context available; scheduled jobs remain queued while the runner is offline. The workflows skip pull requests from forks rather than executing untrusted code on the self-hosted machine.
+The runner uses an isolated Python environment at `C:\Users\abhiv\.venvs\placement-prediction` to avoid Windows path-length failures while installing the full project requirements. Keep the runner host and its Kubernetes context available; scheduled jobs remain queued while the runner is offline. The workflows skip pull requests from forks rather than executing untrusted code on the self-hosted machine.
 
 ## Runner registration
 

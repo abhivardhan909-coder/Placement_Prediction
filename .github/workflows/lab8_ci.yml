@@ -28,6 +28,7 @@ jobs:
     env:
       MLFLOW_TRACKING_URI: sqlite:///mlflow.db
       PYTHON_EXE: C:\Users\abhiv\AppData\Local\Programs\Python\Python311\python.exe
+      PYTHON_VENV: C:\Users\abhiv\.venvs\placement-prediction
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -44,9 +45,9 @@ jobs:
       - name: Install dependencies
         shell: powershell
         run: |
-          & $env:PYTHON_EXE -m venv .venv
+          & $env:PYTHON_EXE -m venv $env:PYTHON_VENV
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $python = Join-Path $env:GITHUB_WORKSPACE ".venv\Scripts\python.exe"
+          $python = Join-Path $env:PYTHON_VENV "Scripts\python.exe"
           & $python -m pip install --upgrade pip
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -m pip install -r requirements.txt pytest
@@ -55,7 +56,7 @@ jobs:
       - name: Run Placement Prediction MLOps Pipeline
         shell: powershell
         run: |
-          $python = Join-Path $env:GITHUB_WORKSPACE ".venv\Scripts\python.exe"
+          $python = Join-Path $env:PYTHON_VENV "Scripts\python.exe"
           & $python ".\src\mlops_pipeline\placement_prediction_pipeline.py"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
@@ -91,7 +92,7 @@ jobs:
       - name: Run test suite
         shell: powershell
         run: |
-          $python = Join-Path $env:GITHUB_WORKSPACE ".venv\Scripts\python.exe"
+          $python = Join-Path $env:PYTHON_VENV "Scripts\python.exe"
           & $python -m pytest
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

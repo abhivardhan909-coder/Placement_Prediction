@@ -18,6 +18,7 @@ jobs:
     runs-on: [self-hosted, Windows, X64, placement-prediction]
     env:
       PYTHON_EXE: C:\Users\abhiv\AppData\Local\Programs\Python\Python311\python.exe
+      PYTHON_VENV: C:\Users\abhiv\.venvs\placement-prediction
 
     steps:
       - name: Checkout repository
@@ -35,9 +36,9 @@ jobs:
       - name: Install dependencies
         shell: powershell
         run: |
-          & $env:PYTHON_EXE -m venv .venv
+          & $env:PYTHON_EXE -m venv $env:PYTHON_VENV
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $python = Join-Path $env:GITHUB_WORKSPACE ".venv\Scripts\python.exe"
+          $python = Join-Path $env:PYTHON_VENV "Scripts\python.exe"
           & $python -m pip install --upgrade pip
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -m pip install -r requirements.txt
@@ -46,7 +47,7 @@ jobs:
       - name: Run MLOps monitoring trigger
         shell: powershell
         run: |
-          $python = Join-Path $env:GITHUB_WORKSPACE ".venv\Scripts\python.exe"
+          $python = Join-Path $env:PYTHON_VENV "Scripts\python.exe"
           & $python ".\src\mlops_pipeline\12_monitor_trigger.py"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

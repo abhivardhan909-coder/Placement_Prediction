@@ -17,6 +17,7 @@ jobs:
     env:
       MLFLOW_TRACKING_URI: sqlite:///mlflow.db
       PYTHON_EXE: C:\Users\abhiv\AppData\Local\Programs\Python\Python311\python.exe
+      PYTHON_VENV: C:\Users\abhiv\.venvs\placement-prediction
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -31,9 +32,9 @@ jobs:
       - name: Install dependencies
         shell: powershell
         run: |
-          & $env:PYTHON_EXE -m venv .venv
+          & $env:PYTHON_EXE -m venv $env:PYTHON_VENV
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $python = Join-Path $env:GITHUB_WORKSPACE ".venv\Scripts\python.exe"
+          $python = Join-Path $env:PYTHON_VENV "Scripts\python.exe"
           & $python -m pip install --upgrade pip
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -m pip install -r requirements.txt
@@ -42,14 +43,14 @@ jobs:
       - name: Build the normal MLOps pipeline
         shell: powershell
         run: |
-          $python = Join-Path $env:GITHUB_WORKSPACE ".venv\Scripts\python.exe"
+          $python = Join-Path $env:PYTHON_VENV "Scripts\python.exe"
           & $python ".\src\mlops_pipeline\placement_prediction_pipeline.py" --force
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Run Lab 9 failure and recovery tests
         shell: powershell
         run: |
-          $python = Join-Path $env:GITHUB_WORKSPACE ".venv\Scripts\python.exe"
+          $python = Join-Path $env:PYTHON_VENV "Scripts\python.exe"
           & $python ".\src\mlops_pipeline\10_failure_injection.py"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
