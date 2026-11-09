@@ -1,15 +1,21 @@
 name: Lab 13 - End-to-End MLOps
-# Scheduled/manual placement model health and deployment check.
 
 on:
   workflow_dispatch:
   schedule:
-    # GitHub Actions schedules are UTC; :47 UTC is :17 in Asia/Kolkata (UTC+05:30).
     - cron: "47 * * * *"
+  workflow_run:
+    workflows: ["Lab 9 - Failure and Recovery Tests"]
+    types: [completed]
+    branches: [main, master]
+
+permissions:
+  contents: read
 
 jobs:
   mlops-monitoring:
-    runs-on: [self-hosted, Windows, X64]
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: [self-hosted, Windows, X64, placement-prediction]
     env:
       PYTHON_EXE: C:\Users\abhiv\AppData\Local\Programs\Python\Python311\python.exe
 
@@ -17,30 +23,61 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Check runner tools
+        shell: powershell
+        run: |
+          if (-not (Test-Path $env:PYTHON_EXE)) { throw "Python 3.11 was not found at $env:PYTHON_EXE" }
+          & $env:PYTHON_EXE --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          kubectl get nodes
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Install dependencies
         shell: powershell
         run: |
-          & $env:PYTHON_EXE -m pip install --upgrade pip
-          & $env:PYTHON_EXE -m pip install -r requirements.txt
+          & $env:PYTHON_EXE -m venv .venv
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $env:GITHUB_WORKSPACE ".venv\Scripts\python.exe"
+          & $python -m pip install --upgrade pip
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install -r requirements.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Run MLOps monitoring trigger
         shell: powershell
         run: |
-          Set-Location "$env:GITHUB_WORKSPACE"
-          & $env:PYTHON_EXE ".\src\mlops_pipeline\12_monitor_trigger.py"
+          $python = Join-Path $env:GITHUB_WORKSPACE ".venv\Scripts\python.exe"
+          & $python ".\src\mlops_pipeline\12_monitor_trigger.py"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Show monitoring result
+      - name: Verify monitoring result
         shell: powershell
         run: |
-          Set-Location "$env:GITHUB_WORKSPACE"
-          if (Test-Path ".\outputs\monitoring\monitor_trigger_report.json") {
-              Get-Content ".\outputs\monitoring\monitor_trigger_report.json"
-          } else {
-              Write-Host "Monitoring report was not generated."
-          }
+          $reportPath = ".\outputs\monitoring\monitor_trigger_report.json"
+          if (-not (Test-Path $reportPath)) { throw "Monitoring report was not generated." }
+          $report = Get-Content $reportPath -Raw | ConvertFrom-Json
+          $report | ConvertTo-Json -Depth 10
+          if ($report.status -eq "pipeline_failed") { throw "The monitoring-triggered pipeline failed." }
 
-      - name: Verify Kubernetes
+      - name: Verify Kubernetes deployment and API health
         shell: powershell
         run: |
-          kubectl get deployment placement-api
-          kubectl get pods
+          kubectl rollout status deployment/placement-api --timeout=180s
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          kubectl get service placement-api-service
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          kubectl exec deployment/placement-api -- python -c "import urllib.request; response = urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=10); print(response.read().decode()); raise SystemExit(response.status != 200)"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          kubectl get pods -l app=placement-api
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload monitoring evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lab13-monitoring-${{ github.run_number }}
+          path: |
+            outputs/monitoring/**
+            reports/**
+            logs/**
+          if-no-files-found: ignore

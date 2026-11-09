@@ -18,51 +18,92 @@ on:
       - ".github/workflows/lab8_ci.yml"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   mlops-ci:
-    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, Windows, X64, placement-prediction]
     env:
-     MLFLOW_TRACKING_URI: sqlite:///mlflow.db
+      MLFLOW_TRACKING_URI: sqlite:///mlflow.db
+      PYTHON_EXE: C:\Users\abhiv\AppData\Local\Programs\Python\Python311\python.exe
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+      - name: Check runner tools
+        shell: powershell
+        run: |
+          if (-not (Test-Path $env:PYTHON_EXE)) { throw "Python 3.11 was not found at $env:PYTHON_EXE" }
+          & $env:PYTHON_EXE --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          docker info
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Install dependencies
+        shell: powershell
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt pytest
+          & $env:PYTHON_EXE -m venv .venv
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $env:GITHUB_WORKSPACE ".venv\Scripts\python.exe"
+          & $python -m pip install --upgrade pip
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install -r requirements.txt pytest
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Run Placement Prediction MLOps Pipeline
-        run: python src/mlops_pipeline/placement_prediction_pipeline.py
+        shell: powershell
+        run: |
+          $python = Join-Path $env:GITHUB_WORKSPACE ".venv\Scripts\python.exe"
+          & $python ".\src\mlops_pipeline\placement_prediction_pipeline.py"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Build placement API image
-        run: docker build -t placement-prediction-api:latest .
+        shell: powershell
+        run: |
+          docker build -t placement-prediction-api:latest .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Start placement API container for tests
-        run: docker run --detach --rm --name placement-api-test -p 8000:8000 placement-prediction-api:latest
+        shell: powershell
+        run: |
+          docker run --detach --rm --name placement-api-test -p 8000:8000 placement-prediction-api:latest
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Wait for placement API readiness
+        shell: powershell
         run: |
-          for attempt in {1..30}; do
-            if curl --fail --silent http://localhost:8000/health; then
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "Placement API did not become ready in time."
-          exit 1
+          $ready = $false
+          for ($attempt = 0; $attempt -lt 30; $attempt++) {
+            try {
+              $response = Invoke-RestMethod -Uri "http://127.0.0.1:8000/health" -TimeoutSec 5
+              if ($response.status -eq "healthy") {
+                $ready = $true
+                break
+              }
+            } catch {
+              Start-Sleep -Seconds 2
+            }
+          }
+          if (-not $ready) { throw "Placement API did not become healthy within 60 seconds." }
 
       - name: Run test suite
-        run: python -m pytest
+        shell: powershell
+        run: |
+          $python = Join-Path $env:GITHUB_WORKSPACE ".venv\Scripts\python.exe"
+          & $python -m pytest
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Stop placement API test container
         if: always()
-        run: docker stop placement-api-test || true
+        shell: powershell
+        run: |
+          $containerId = docker ps -aq --filter "name=^/placement-api-test$"
+          if ($containerId) {
+            docker rm -f $containerId
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
 
       - name: Upload CI artifacts
         if: always()

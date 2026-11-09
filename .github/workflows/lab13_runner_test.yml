@@ -3,12 +3,14 @@ name: Lab 13 - Self Hosted Runner Test
 on:
   push:
     branches:
+      - main
+      - master
       - lab13-integration
   workflow_dispatch:
 
 jobs:
   test-runner:
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: [self-hosted, Windows, X64, placement-prediction]
     env:
       PYTHON_EXE: C:\Users\abhiv\AppData\Local\Programs\Python\Python311\python.exe
 
